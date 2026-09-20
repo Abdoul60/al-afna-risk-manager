@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager — Menaces & Vulnérabilités</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/context-helper.js"></script>
+<style>
+  .cols{display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start;}
+  @media (max-width:820px){ .cols{grid-template-columns:1fr;} }
+  .row-actions{display:flex; gap:8px;}
+  .row-actions button{
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    padding:5px 10px; border-radius:5px; cursor:pointer; font-size:12.5px;
+  }
+  .row-actions button.danger:hover{border-color:var(--crit); color:var(--crit);}
+  #menaceMsg, #vulnMsg{font-family:var(--mono); font-size:12.5px; margin-top:4px; min-height:16px;}
+  .ok{color:var(--low);} .err{color:var(--crit);}
+  select#contexteSelect{margin-bottom:20px;}
+  .badge-source{
+    font-family:var(--mono); font-size:11px; padding:2px 8px; border-radius:4px; border:1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
+    <ul>
+      <li><a href="index.html">Accueil</a></li>
+      <li><a href="actifs.html">Actifs</a></li>
+      <li><a href="menaces.html" class="active">Menaces</a></li>
+      <li><a href="risques.html">Risques</a></li>
+      <li><a href="traitements.html">Traitements</a></li>
+      <li><a href="rapports.html">Rapports</a></li>
+    </ul>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Menaces &amp; Vulnérabilités</h1>
+    <p class="subtitle">Étape 5 — bibliothèque de menaces, et vulnérabilités propres à chaque actif.</p>
+
+    <label for="contexteSelect">Contexte d'évaluation actif</label>
+    <select id="contexteSelect"></select>
+
+    <!-- MENACES -->
+    <div class="cols">
+      <div class="card">
+        <h2>Ajouter une menace</h2>
+        <p style="margin-bottom:14px;">Les menaces forment une bibliothèque réutilisable, indépendante d'un actif précis.</p>
+
+        <label for="mActifRef">Suggérer à partir d'un actif (IA)</label>
+        <select id="mActifRef"><option value="">— choisir un actif pour suggestion —</option></select>
+        <button type="button" class="btn btn-ghost" id="btnSuggestMenace" style="margin-bottom:16px;">✨ Suggérer une menace via IA</button>
+        <div id="aiMenaceMsg" style="font-family:var(--mono); font-size:12px; color:var(--ink-dim); margin-bottom:10px;"></div>
+
+        <form id="menaceForm">
+          <label for="mNom">Nom de la menace</label>
+          <input id="mNom" placeholder="ex : Accès réseau non autorisé" required>
+
+          <label for="mDesc">Description</label>
+          <textarea id="mDesc" rows="2" placeholder="ex : Un tiers accède à une ressource sans autorisation"></textarea>
+
+          <label for="mSource">Source</label>
+          <select id="mSource" required>
+            <option value="">-- choisir --</option>
+            <option value="interne">Interne</option>
+            <option value="externe">Externe</option>
+            <option value="environnementale">Environnementale</option>
+          </select>
+
+          <button type="submit" class="btn">Ajouter la menace</button>
+          <div id="menaceMsg"></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Bibliothèque de menaces</h2>
+        <table>
+          <thead><tr><th>Nom</th><th>Source</th><th></th></tr></thead>
+          <tbody id="menacesTable"><tr><td colspan="3" style="color:var(--ink-dim)">Chargement…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VULNERABILITES -->
+    <div class="cols" style="margin-top:32px;">
+      <div class="card">
+        <h2>Ajouter une vulnérabilité</h2>
+        <p style="margin-bottom:14px;">Une vulnérabilité est toujours liée à un actif précis.</p>
+        <form id="vulnForm">
+          <label for="vActif">Actif concerné</label>
+          <select id="vActif" required></select>
+
+          <label for="vNom">Nom de la vulnérabilité</label>
+          <input id="vNom" placeholder="ex : Absence de segmentation VLAN" required>
+
+          <label for="vDesc">Description</label>
+          <textarea id="vDesc" rows="2" placeholder="ex : Aucune ACL entre les VLANs Direction et Comptabilité"></textarea>
+
+          <button type="submit" class="btn">Ajouter la vulnérabilité</button>
+          <div id="vulnMsg"></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Vulnérabilités enregistrées</h2>
+        <table>
+          <thead><tr><th>Actif</th><th>Vulnérabilité</th><th></th></tr></thead>
+          <tbody id="vulnTable"><tr><td colspan="3" style="color:var(--ink-dim)">Chargement…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="page-nav">
+      <a href="actifs.html">← Actifs</a>
+      <a href="risques.html" class="next">Analyse des risques →</a>
+    </div>
+  </div>
+</main>
+
+<script src="assets/supabase-config.js"></script>
+<script>
+  let currentContexteId = null;
+  let actifsCache = [];
+
+  async function loadContextes(){
+    const sel = document.getElementById('contexteSelect');
+    const { data, error } = await supabaseClient.from('contexte').select('id, nom_organisation').order('created_at', {ascending:false});
+    if (error){ sel.innerHTML = `<option>Erreur: ${error.message}</option>`; return; }
+    if (!data || data.length === 0){
+      sel.innerHTML = `<option>Aucun contexte — crée d'abord un actif dans la page Actifs</option>`;
+      return;
+    }
+    sel.innerHTML = data.map(c => `<option value="${c.id}">${c.nom_organisation}</option>`).join('');
+    const selected = getSelectedContexteId();
+    currentContexteId = (selected && data.some(c => c.id === selected)) ? selected : data[0].id;
+    sel.value = currentContexteId;
+    document.getElementById('contexteSelect').addEventListener('change', (e) => {
+      currentContexteId = e.target.value;
+      setSelectedContexteId(currentContexteId);
+      loadActifsForVulnSelect();
+      loadVulnerabilites();
+      loadActifsRefSelect();
+    });
+    loadActifsForVulnSelect();
+    loadMenaces();
+    loadVulnerabilites();
+    loadActifsRefSelect();
+  }
+
+  // -- Menaces (bibliothèque, non liée à un contexte) --
+  async function loadMenaces(){
+    const tbody = document.getElementById('menacesTable');
+    tbody.innerHTML = `<tr><td colspan="3" style="color:var(--ink-dim)">Chargement…</td></tr>`;
+    const { data, error } = await supabaseClient.from('menaces').select('*').order('created_at', {ascending:false});
+    if (error){ tbody.innerHTML = `<tr><td colspan="3" style="color:var(--crit)">Erreur : ${error.message}</td></tr>`; return; }
+    if (!data || data.length === 0){ tbody.innerHTML = `<tr><td colspan="3" style="color:var(--ink-dim)">Aucune menace enregistrée.</td></tr>`; return; }
+    tbody.innerHTML = data.map(m => `
+      <tr>
+        <td>${m.nom}</td>
+        <td><span class="badge-source">${m.source}</span></td>
+        <td class="row-actions"><button class="danger" onclick="deleteMenace('${m.id}')">Supprimer</button></td>
+      </tr>
+    `).join('');
+  }
+
+  document.getElementById('menaceForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('menaceMsg');
+    const payload = {
+      nom: document.getElementById('mNom').value.trim(),
+      description: document.getElementById('mDesc').value.trim(),
+      source: document.getElementById('mSource').value,
+    };
+    const { error } = await supabaseClient.from('menaces').insert([payload]);
+    if (error){ msg.className='err'; msg.textContent = '❌ ' + error.message; return; }
+    msg.className='ok'; msg.textContent = '✅ Menace ajoutée.';
+    e.target.reset();
+    loadMenaces();
+  });
+
+  async function deleteMenace(id){
+    if (!confirm('Supprimer cette menace ?')) return;
+    const { error } = await supabaseClient.from('menaces').delete().eq('id', id);
+    if (error){ alert('Erreur : ' + error.message); return; }
+    loadMenaces();
+  }
+
+  // -- Vulnérabilités (liées à un actif du contexte courant) --
+  async function loadActifsForVulnSelect(){
+    const sel = document.getElementById('vActif');
+    if (!currentContexteId){ sel.innerHTML = `<option>Choisis un contexte</option>`; return; }
+    const { data, error } = await supabaseClient.from('actifs').select('id, nom').eq('contexte_id', currentContexteId);
+    if (error){ sel.innerHTML = `<option>Erreur: ${error.message}</option>`; return; }
+    actifsCache = data || [];
+    if (actifsCache.length === 0){ sel.innerHTML = `<option value="">Aucun actif — ajoute-en un d'abord</option>`; return; }
+    sel.innerHTML = actifsCache.map(a => `<option value="${a.id}">${a.nom}</option>`).join('');
+  }
+
+  async function loadVulnerabilites(){
+    const tbody = document.getElementById('vulnTable');
+    tbody.innerHTML = `<tr><td colspan="3" style="color:var(--ink-dim)">Chargement…</td></tr>`;
+    if (!currentContexteId || actifsCache.length === 0){
+      tbody.innerHTML = `<tr><td colspan="3" style="color:var(--ink-dim)">Aucun actif dans ce contexte.</td></tr>`;
+      return;
+    }
+    const ids = actifsCache.map(a => a.id);
+    const { data, error } = await supabaseClient.from('vulnerabilites').select('*, actifs(nom)').in('actif_id', ids).order('created_at', {ascending:false});
+    if (error){ tbody.innerHTML = `<tr><td colspan="3" style="color:var(--crit)">Erreur : ${error.message}</td></tr>`; return; }
+    if (!data || data.length === 0){ tbody.innerHTML = `<tr><td colspan="3" style="color:var(--ink-dim)">Aucune vulnérabilité enregistrée.</td></tr>`; return; }
+    tbody.innerHTML = data.map(v => `
+      <tr>
+        <td>${v.actifs ? v.actifs.nom : '—'}</td>
+        <td>${v.nom}</td>
+        <td class="row-actions"><button class="danger" onclick="deleteVuln('${v.id}')">Supprimer</button></td>
+      </tr>
+    `).join('');
+  }
+
+  document.getElementById('vulnForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('vulnMsg');
+    const actifId = document.getElementById('vActif').value;
+    if (!actifId){ msg.className='err'; msg.textContent = '❌ Choisis un actif.'; return; }
+    const payload = {
+      actif_id: actifId,
+      nom: document.getElementById('vNom').value.trim(),
+      description: document.getElementById('vDesc').value.trim(),
+    };
+    const { error } = await supabaseClient.from('vulnerabilites').insert([payload]);
+    if (error){ msg.className='err'; msg.textContent = '❌ ' + error.message; return; }
+    msg.className='ok'; msg.textContent = '✅ Vulnérabilité ajoutée.';
+    e.target.reset();
+    loadVulnerabilites();
+  });
+
+  async function deleteVuln(id){
+    if (!confirm('Supprimer cette vulnérabilité ?')) return;
+    const { error } = await supabaseClient.from('vulnerabilites').delete().eq('id', id);
+    if (error){ alert('Erreur : ' + error.message); return; }
+    loadVulnerabilites();
+  }
+
+  loadContextes();
+
+  // -- IA : suggestion de menace à partir d'un actif --
+  async function loadActifsRefSelect(){
+    const sel = document.getElementById('mActifRef');
+    if (!currentContexteId) return;
+    const { data } = await supabaseClient.from('actifs').select('id, nom, type').eq('contexte_id', currentContexteId);
+    sel.innerHTML = `<option value="">— choisir un actif pour suggestion —</option>` +
+      (data || []).map(a => `<option value="${a.id}" data-nom="${a.nom}" data-type="${a.type}">${a.nom}</option>`).join('');
+  }
+
+  document.getElementById('btnSuggestMenace').addEventListener('click', async () => {
+    const sel = document.getElementById('mActifRef');
+    const msgEl = document.getElementById('aiMenaceMsg');
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value){ msgEl.textContent = '❌ Choisis d\'abord un actif.'; return; }
+
+    msgEl.textContent = '⏳ L\'IA réfléchit…';
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('ai-assistant', {
+        body: { task: 'suggest_menace', payload: { nomActif: opt.dataset.nom, typeActif: opt.dataset.type } }
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      document.getElementById('mNom').value = data.nom || '';
+      document.getElementById('mDesc').value = data.description || '';
+      document.getElementById('mSource').value = data.source || '';
+      msgEl.textContent = '✅ Suggestion appliquée au formulaire — vérifie avant d\'enregistrer.';
+    } catch (e){
+      msgEl.textContent = '❌ ' + e.message;
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager — Traitement des risques</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/context-helper.js"></script>
+<style>
+  .grid-2{display:grid; grid-template-columns:380px 1fr; gap:24px; align-items:start;}
+  @media (max-width:820px){ .grid-2{grid-template-columns:1fr;} }
+  select#contexteSelect{margin-bottom:20px;}
+  #traitMsg{font-family:var(--mono); font-size:12.5px; margin-top:4px; min-height:16px;}
+  .ok{color:var(--low);} .err{color:var(--crit);}
+  .niveau{font-family:var(--mono); font-size:11px; padding:3px 8px; border-radius:5px; font-weight:600;}
+  .niveau.Critique{background:rgba(229,72,77,0.15); color:var(--crit);}
+  .niveau.Élevé{background:rgba(240,166,58,0.15); color:var(--high);}
+  .niveau.Moyen{background:rgba(232,197,71,0.15); color:var(--med);}
+  .niveau.Faible{background:rgba(63,178,127,0.15); color:var(--low);}
+  .statut{font-family:var(--mono); font-size:11px; padding:3px 8px; border-radius:5px; border:1px solid var(--line);}
+  .row-actions button{
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    padding:5px 10px; border-radius:5px; cursor:pointer; font-size:12.5px;
+  }
+  .row-actions button.danger:hover{border-color:var(--crit); color:var(--crit);}
+  .meta-hint{font-size:12.5px; color:var(--ink-dim); margin:-8px 0 14px;}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
+    <ul>
+      <li><a href="index.html">Accueil</a></li>
+      <li><a href="actifs.html">Actifs</a></li>
+      <li><a href="menaces.html">Menaces</a></li>
+      <li><a href="risques.html">Risques</a></li>
+      <li><a href="traitements.html" class="active">Traitements</a></li>
+      <li><a href="rapports.html">Rapports</a></li>
+    </ul>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Traitement des risques</h1>
+    <p class="subtitle">Étape 7 — pour chaque risque identifié, choisir une réponse et une mesure ISO 27002.</p>
+
+    <label for="contexteSelect">Contexte d'évaluation actif</label>
+    <select id="contexteSelect"></select>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2>Nouveau traitement</h2>
+        <form id="traitForm">
+          <label for="tRisque">Risque à traiter</label>
+          <select id="tRisque" required></select>
+          <p class="meta-hint">Seuls les risques sans traitement enregistré sont proposés.</p>
+
+          <button type="button" class="btn btn-ghost" id="btnSuggestMesure" style="margin-bottom:16px;">✨ Suggérer une mesure via IA</button>
+          <div id="aiTraitMsg" style="font-family:var(--mono); font-size:12px; color:var(--ink-dim); margin-bottom:10px;"></div>
+
+          <label for="tOption">Option (MÉTA)</label>
+          <select id="tOption" required>
+            <option value="">-- choisir --</option>
+            <option value="Modifier">Modifier — réduire la vraisemblance ou l'impact</option>
+            <option value="Éviter">Éviter — supprimer la cause du risque</option>
+            <option value="Transférer">Transférer — assurance, sous-traitance</option>
+            <option value="Accepter">Accepter — risque jugé tolérable</option>
+          </select>
+
+          <label for="tMesure">Mesure ISO 27002 (code + intitulé)</label>
+          <input id="tMesure" placeholder="ex : A.8.20 - Sécurité des réseaux">
+
+          <label for="tDesc">Description de la mesure</label>
+          <textarea id="tDesc" rows="2" placeholder="ex : Mettre en place des ACL entre les VLANs"></textarea>
+
+          <label for="tResp">Responsable</label>
+          <input id="tResp" placeholder="ex : Service IT">
+
+          <label for="tStatut">Statut</label>
+          <select id="tStatut" required>
+            <option value="Prévu">Prévu</option>
+            <option value="En cours">En cours</option>
+            <option value="Terminé">Terminé</option>
+          </select>
+
+          <button type="submit" class="btn">Enregistrer le traitement</button>
+          <div id="traitMsg"></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Traitements enregistrés</h2>
+        <table>
+          <thead><tr><th>Risque</th><th>Niveau</th><th>Option</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="traitTable"><tr><td colspan="5" style="color:var(--ink-dim)">Chargement…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="page-nav">
+      <a href="risques.html">← Analyse des risques</a>
+      <a href="rapports.html" class="next">Rapports →</a>
+    </div>
+  </div>
+</main>
+
+<script src="assets/supabase-config.js"></script>
+<script>
+  let currentContexteId = null;
+
+  async function loadContextes(){
+    const sel = document.getElementById('contexteSelect');
+    const { data, error } = await supabaseClient.from('contexte').select('id, nom_organisation').order('created_at', {ascending:false});
+    if (error){ sel.innerHTML = `<option>Erreur: ${error.message}</option>`; return; }
+    if (!data || data.length === 0){ sel.innerHTML = `<option>Aucun contexte</option>`; return; }
+    sel.innerHTML = data.map(c => `<option value="${c.id}">${c.nom_organisation}</option>`).join('');
+    const selected = getSelectedContexteId();
+    currentContexteId = (selected && data.some(c => c.id === selected)) ? selected : data[0].id;
+    sel.value = currentContexteId;
+    sel.addEventListener('change', (e) => { currentContexteId = e.target.value; setSelectedContexteId(currentContexteId); refreshAll(); });
+    refreshAll();
+  }
+
+  function refreshAll(){
+    loadRisquesSelect();
+    loadTraitements();
+  }
+
+  // Ne propose que les risques du contexte qui n'ont pas encore de traitement
+  async function loadRisquesSelect(){
+    const sel = document.getElementById('tRisque');
+    const { data: risques, error } = await supabaseClient
+      .from('risques')
+      .select('id, score, niveau, actifs(nom), menaces(nom)')
+      .eq('contexte_id', currentContexteId)
+      .order('score', { ascending:false });
+    if (error){ sel.innerHTML = `<option>Erreur</option>`; return; }
+
+    const { data: traites } = await supabaseClient.from('traitements').select('risque_id');
+    const traitesIds = new Set((traites || []).map(t => t.risque_id));
+    const dispo = (risques || []).filter(r => !traitesIds.has(r.id));
+
+    sel.innerHTML = dispo.length
+      ? dispo.map(r => `<option value="${r.id}">[${r.niveau} — ${r.score}] ${r.actifs?.nom || '?'} / ${r.menaces?.nom || '?'}</option>`).join('')
+      : `<option value="">Tous les risques de ce contexte sont déjà traités</option>`;
+  }
+
+  async function loadTraitements(){
+    const tbody = document.getElementById('traitTable');
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--ink-dim)">Chargement…</td></tr>`;
+    const { data: risquesContexte, error: rErr } = await supabaseClient
+      .from('risques').select('id').eq('contexte_id', currentContexteId);
+    if (rErr){ tbody.innerHTML = `<tr><td colspan="5" style="color:var(--crit)">Erreur : ${rErr.message}</td></tr>`; return; }
+    const ids = (risquesContexte || []).map(r => r.id);
+    if (ids.length === 0){ tbody.innerHTML = `<tr><td colspan="5" style="color:var(--ink-dim)">Aucun risque dans ce contexte.</td></tr>`; return; }
+
+    const { data, error } = await supabaseClient
+      .from('traitements')
+      .select('*, risques(score, niveau, actifs(nom), menaces(nom))')
+      .in('risque_id', ids)
+      .order('created_at', { ascending:false });
+    if (error){ tbody.innerHTML = `<tr><td colspan="5" style="color:var(--crit)">Erreur : ${error.message}</td></tr>`; return; }
+    if (!data || data.length === 0){ tbody.innerHTML = `<tr><td colspan="5" style="color:var(--ink-dim)">Aucun traitement enregistré.</td></tr>`; return; }
+
+    tbody.innerHTML = data.map(t => `
+      <tr>
+        <td>${t.risques?.actifs?.nom || '?'} / ${t.risques?.menaces?.nom || '?'}</td>
+        <td><span class="niveau ${t.risques?.niveau}">${t.risques?.niveau || '—'}</span></td>
+        <td>${t.option_meta}</td>
+        <td><span class="statut">${t.statut}</span></td>
+        <td class="row-actions"><button class="danger" onclick="deleteTrait('${t.id}')">Supprimer</button></td>
+      </tr>
+    `).join('');
+  }
+
+  document.getElementById('traitForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('traitMsg');
+    const risqueId = document.getElementById('tRisque').value;
+    if (!risqueId){ msg.className='err'; msg.textContent='❌ Choisis un risque.'; return; }
+    const payload = {
+      risque_id: risqueId,
+      option_meta: document.getElementById('tOption').value,
+      mesure_iso27002: document.getElementById('tMesure').value.trim(),
+      description_mesure: document.getElementById('tDesc').value.trim(),
+      responsable: document.getElementById('tResp').value.trim(),
+      statut: document.getElementById('tStatut').value,
+    };
+    const { error } = await supabaseClient.from('traitements').insert([payload]);
+    if (error){ msg.className='err'; msg.textContent='❌ ' + error.message; return; }
+    msg.className='ok'; msg.textContent='✅ Traitement enregistré.';
+    e.target.reset();
+    refreshAll();
+  });
+
+  async function deleteTrait(id){
+    if (!confirm('Supprimer ce traitement ?')) return;
+    const { error } = await supabaseClient.from('traitements').delete().eq('id', id);
+    if (error){ alert('Erreur : ' + error.message); return; }
+    refreshAll();
+  }
+
+  loadContextes();
+
+  // -- IA : suggestion de mesure de traitement --
+  document.getElementById('btnSuggestMesure').addEventListener('click', async () => {
+    const sel = document.getElementById('tRisque');
+    const msgEl = document.getElementById('aiTraitMsg');
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value){ msgEl.textContent = '❌ Choisis d\'abord un risque.'; return; }
+
+    // On récupère les détails complets du risque choisi
+    const { data: r, error: rErr } = await supabaseClient
+      .from('risques').select('*, actifs(nom), menaces(nom), vulnerabilites(nom)')
+      .eq('id', opt.value).single();
+    if (rErr){ msgEl.textContent = '❌ ' + rErr.message; return; }
+
+    msgEl.textContent = '⏳ L\'IA réfléchit…';
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('ai-assistant', {
+        body: { task: 'suggest_mesure', payload: {
+          nomActif: r.actifs?.nom || '',
+          nomMenace: r.menaces?.nom || '',
+          nomVuln: r.vulnerabilites?.nom || '',
+          niveau: r.niveau,
+        }}
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      document.getElementById('tOption').value = data.option_meta || '';
+      document.getElementById('tMesure').value = data.mesure_iso27002 || '';
+      document.getElementById('tDesc').value = data.description_mesure || '';
+      msgEl.textContent = '✅ Suggestion appliquée — vérifie avant d\'enregistrer.';
+    } catch (e){
+      msgEl.textContent = '❌ ' + e.message;
+    }
+  });
+</script>
+</body>
+</html>

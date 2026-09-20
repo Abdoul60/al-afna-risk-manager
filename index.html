@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager — Tableau de bord</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  .status{display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12.5px; padding:7px 12px; border-radius:6px; border:1px solid var(--line); margin-bottom:28px;}
+  .status.ok{color:var(--low); border-color:var(--low);}
+  .status.err{color:var(--crit); border-color:var(--crit);}
+  .status.pending{color:var(--ink-dim);}
+  .table-wrap{overflow-x:auto;}
+  .empty-state{ text-align:center; padding:40px 20px; color:var(--ink-dim); font-size:14px; }
+  .row-open{
+    background:transparent; border:1px solid var(--line); color:var(--ink);
+    padding:6px 12px; border-radius:5px; cursor:pointer; font-size:12.5px; font-family:var(--body); font-weight:600;
+  }
+  .row-open:hover{border-color:var(--teal); color:var(--teal);}
+  .chart-row{display:flex; align-items:center; gap:12px; margin-bottom:12px;}
+  .chart-label{width:80px; font-family:var(--mono); font-size:12px; flex:none;}
+  .chart-track{flex:1; background:var(--bg); border-radius:5px; height:18px; overflow:hidden;}
+  .chart-fill{height:100%; border-radius:5px; transition:width .4s ease;}
+  .chart-count{width:28px; text-align:right; font-family:var(--mono); font-size:12px; color:var(--ink-dim); flex:none;}
+  .matrix-grid{display:grid; grid-template-columns:repeat(5, 1fr); gap:5px; max-width:340px; transform:scaleY(-1);}
+  .matrix-cell{
+    aspect-ratio:1; border-radius:4px; display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-size:13px; font-weight:600; color:rgba(4,20,18,0.7); transform:scaleY(-1);
+    cursor:default; transition:transform .12s ease;
+  }
+  .matrix-cell:hover{transform:scaleY(-1) scale(1.08); z-index:2;}
+  .matrix-axis{font-family:var(--mono); font-size:10.5px; color:var(--ink-dim); margin-top:8px;}
+  .matrix-tip{font-family:var(--mono); font-size:11.5px; color:var(--ink-dim); margin-top:10px; min-height:16px;}
+  .row-actions-group{display:flex; gap:6px; flex-wrap:wrap;}
+  .row-edit, .row-delete{
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    padding:6px 10px; border-radius:5px; cursor:pointer; font-size:12px; font-family:var(--body);
+  }
+  .row-edit:hover{border-color:var(--teal); color:var(--teal);}
+  .row-delete:hover{border-color:var(--crit); color:var(--crit);}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
+    <ul>
+      <li><a href="index.html" class="active">Accueil</a></li>
+      <li><a href="actifs.html">Actifs</a></li>
+      <li><a href="menaces.html">Menaces</a></li>
+      <li><a href="risques.html">Risques</a></li>
+      <li><a href="traitements.html">Traitements</a></li>
+      <li><a href="rapports.html">Rapports</a></li>
+    </ul>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Tableau de bord</h1>
+    <p class="subtitle">Vue d'ensemble de toutes les entreprises étudiées et de leur avancement.</p>
+
+    <div id="status" class="status pending">⏳ Vérification de la connexion…</div>
+
+    <div class="card">
+      <h2>Nouvelle entreprise à évaluer</h2>
+      <p style="margin-bottom:16px;">Commence toujours par ici : renseigne l'entreprise étudiée avant d'ajouter des actifs.</p>
+      <form id="contexteForm">
+        <label for="nomOrg">Nom de l'entreprise</label>
+        <input id="nomOrg" placeholder="ex : AfriTech SARL" required>
+
+        <label for="perimetre">Périmètre évalué</label>
+        <input id="perimetre" placeholder="ex : Réseau du siège social">
+
+        <label for="objectifs">Objectifs de l'évaluation</label>
+        <textarea id="objectifs" rows="2" placeholder="ex : Identifier les risques prioritaires avant la certification"></textarea>
+
+        <button type="submit" class="btn">Créer et commencer →</button>
+        <div id="formMsg" style="font-family:var(--mono); font-size:12.5px; margin-top:8px; min-height:16px;"></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Répartition globale des risques par niveau</h2>
+      <p style="margin-bottom:14px;">Tous contextes confondus.</p>
+      <div id="chartWrap"><p style="color:var(--ink-dim); font-size:13px;">Chargement…</p></div>
+    </div>
+
+    <div class="card">
+      <h2>Matrice des risques (vraisemblance × impact)</h2>
+      <p style="margin-bottom:14px;">Tous contextes confondus — survole une case pour le détail.</p>
+      <div id="matrixWrap"><p style="color:var(--ink-dim); font-size:13px;">Chargement…</p></div>
+    </div>
+
+    <div class="card">
+      <h2>Entreprises déjà évaluées</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Entreprise</th><th>Actifs</th><th>Risques</th><th>Traitements</th><th>Créée le</th><th></th></tr>
+          </thead>
+          <tbody id="contextesTable">
+            <tr><td colspan="6" style="color:var(--ink-dim)">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="assets/context-helper.js"></script>
+<script src="assets/supabase-config.js"></script>
+<script>
+  async function testConnectionAndLoad(){
+    const statusEl = document.getElementById('status');
+    try {
+      const { error } = await supabaseClient.from('contexte').select('id').limit(1);
+      if (error) throw error;
+      statusEl.className = 'status ok';
+      statusEl.textContent = '✅ Connecté à la base de données.';
+      loadContextesOverview();
+      loadGlobalChart(); loadGlobalMatrix();
+    } catch (e) {
+      statusEl.className = 'status err';
+      statusEl.textContent = '❌ Connexion échouée — vérifie tes clés dans supabase-config.js (' + e.message + ')';
+      document.getElementById('contextesTable').innerHTML =
+        `<tr><td colspan="6" style="color:var(--crit)">Impossible de charger — connexion échouée.</td></tr>`;
+    }
+  }
+
+  async function loadContextesOverview(){
+    const tbody = document.getElementById('contextesTable');
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--ink-dim)">Chargement…</td></tr>`;
+
+    const { data: contextes, error } = await supabaseClient.from('contexte').select('*').order('created_at', { ascending:false });
+    if (error){ tbody.innerHTML = `<tr><td colspan="6" style="color:var(--crit)">Erreur : ${error.message}</td></tr>`; return; }
+    if (!contextes || contextes.length === 0){
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Aucune entreprise enregistrée pour l'instant — crée-en une ci-dessus.</div></td></tr>`;
+      return;
+    }
+
+    const rows = await Promise.all(contextes.map(async (c) => {
+      const { count: nbActifs } = await supabaseClient.from('actifs').select('id', { count:'exact', head:true }).eq('contexte_id', c.id);
+      const { data: risquesIds } = await supabaseClient.from('risques').select('id').eq('contexte_id', c.id);
+      const ids = (risquesIds || []).map(r => r.id);
+      let nbTrait = 0;
+      if (ids.length){
+        const { count } = await supabaseClient.from('traitements').select('id', { count:'exact', head:true }).in('risque_id', ids);
+        nbTrait = count || 0;
+      }
+      return { c, nbActifs: nbActifs || 0, nbRisques: ids.length, nbTrait };
+    }));
+
+    tbody.innerHTML = rows.map(({c, nbActifs, nbRisques, nbTrait}) => `
+      <tr>
+        <td><b>${c.nom_organisation}</b>${c.perimetre ? '<br><span style="color:var(--ink-dim); font-size:12px;">'+c.perimetre+'</span>' : ''}</td>
+        <td>${nbActifs}</td>
+        <td>${nbRisques}</td>
+        <td>${nbTrait}</td>
+        <td style="font-family:var(--mono); font-size:12px; color:var(--ink-dim);">${new Date(c.created_at).toLocaleDateString('fr-FR')}</td>
+        <td class="row-actions-group">
+          <button class="row-open" onclick="ouvrirContexte('${c.id}')">Ouvrir →</button>
+          <button class="row-edit" onclick="modifierContexte('${c.id}', '${(c.nom_organisation||'').replace(/'/g,"\\'")}', '${(c.perimetre||'').replace(/'/g,"\\'")}')">Modifier</button>
+          <button class="row-delete" onclick="supprimerContexte('${c.id}', '${(c.nom_organisation||'').replace(/'/g,"\\'")}')">Supprimer</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function modifierContexte(id, nomActuel, perimetreActuel){
+    const nouveauNom = prompt('Nom de l\'entreprise :', nomActuel);
+    if (nouveauNom === null) return; // annulé
+    const nouveauPerimetre = prompt('Périmètre évalué :', perimetreActuel);
+    const { error } = await supabaseClient.from('contexte')
+      .update({ nom_organisation: nouveauNom.trim(), perimetre: (nouveauPerimetre || '').trim() })
+      .eq('id', id);
+    if (error){ alert('Erreur : ' + error.message); return; }
+    loadContextesOverview(); loadGlobalChart(); loadGlobalMatrix();
+  }
+
+  async function supprimerContexte(id, nom){
+    const confirmation = confirm(
+      `Supprimer "${nom}" ?\n\nCela supprime aussi TOUS ses actifs, risques et traitements associés. Cette action est irréversible.`
+    );
+    if (!confirmation) return;
+    const { error } = await supabaseClient.from('contexte').delete().eq('id', id);
+    if (error){ alert('Erreur : ' + error.message); return; }
+    if (getSelectedContexteId() === id) clearSelectedContexteId();
+    loadContextesOverview(); loadGlobalChart(); loadGlobalMatrix();
+  }
+
+  // -- Graphique global : répartition des risques par niveau, tous contextes confondus --
+  async function loadGlobalChart(){
+    const wrap = document.getElementById('chartWrap');
+    const { data: risques, error } = await supabaseClient.from('risques').select('niveau');
+    if (error){ wrap.innerHTML = `<p style="color:var(--crit); font-size:13px;">Erreur : ${error.message}</p>`; return; }
+    if (!risques || risques.length === 0){
+      wrap.innerHTML = `<p style="color:var(--ink-dim); font-size:13px;">Aucun risque enregistré pour l'instant.</p>`;
+      return;
+    }
+    const niveaux = [
+      { nom:'Critique', couleur:'var(--crit)' },
+      { nom:'Élevé', couleur:'var(--high)' },
+      { nom:'Moyen', couleur:'var(--med)' },
+      { nom:'Faible', couleur:'var(--low)' },
+    ];
+    const total = risques.length;
+    const counts = {};
+    niveaux.forEach(n => counts[n.nom] = risques.filter(r => r.niveau === n.nom).length);
+    const max = Math.max(...Object.values(counts), 1);
+
+    wrap.innerHTML = niveaux.map(n => {
+      const c = counts[n.nom];
+      const pct = Math.round((c / max) * 100);
+      return `
+        <div class="chart-row">
+          <div class="chart-label" style="color:${n.couleur}">${n.nom}</div>
+          <div class="chart-track"><div class="chart-fill" style="width:${pct}%; background:${n.couleur};"></div></div>
+          <div class="chart-count">${c}</div>
+        </div>`;
+    }).join('') + `<p style="color:var(--ink-dim); font-size:12px; margin-top:8px;">Total : ${total} risque(s), toutes entreprises confondues.</p>`;
+  }
+
+  // -- Matrice globale : risques réels positionnés par vraisemblance x impact --
+  async function loadGlobalMatrix(){
+    const wrap = document.getElementById('matrixWrap');
+    const { data: risques, error } = await supabaseClient.from('risques').select('vraisemblance, impact, score');
+    if (error){ wrap.innerHTML = `<p style="color:var(--crit); font-size:13px;">Erreur : ${error.message}</p>`; return; }
+
+    const levelColor = (s) => s>=15 ? 'var(--crit)' : s>=9 ? 'var(--high)' : s>=4 ? 'var(--med)' : 'var(--low)';
+    let grid = '';
+    for (let v=1; v<=5; v++){
+      for (let i=1; i<=5; i++){
+        const score = v*i;
+        const count = (risques || []).filter(r => r.vraisemblance === v && r.impact === i).length;
+        grid += `<div class="matrix-cell" style="background:${levelColor(score)}"
+                   onmouseenter="document.getElementById('matrixTip').textContent = 'Vraisemblance ${v} × Impact ${i} = ${score} — ${count} risque(s)'"
+                   onmouseleave="document.getElementById('matrixTip').textContent = ''">
+                   ${count > 0 ? count : ''}
+                 </div>`;
+      }
+    }
+    wrap.innerHTML = `<div class="matrix-grid">${grid}</div>
+      <div class="matrix-axis">Impact (1 → 5) — chaque case affiche le nombre de risques à ce score</div>
+      <div class="matrix-tip" id="matrixTip">&nbsp;</div>`;
+  }
+
+  function ouvrirContexte(id){
+    setSelectedContexteId(id);
+    window.location.href = 'actifs.html';
+  }
+
+  document.getElementById('contexteForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('formMsg');
+    const payload = {
+      nom_organisation: document.getElementById('nomOrg').value.trim(),
+      perimetre: document.getElementById('perimetre').value.trim(),
+      objectifs: document.getElementById('objectifs').value.trim(),
+    };
+    const { data, error } = await supabaseClient.from('contexte').insert([payload]).select();
+    if (error){ msg.className='err'; msg.textContent = '❌ ' + error.message; return; }
+    msg.className='ok'; msg.textContent = '✅ Entreprise créée, redirection…';
+    setSelectedContexteId(data[0].id);
+    setTimeout(() => { window.location.href = 'actifs.html'; }, 600);
+  });
+
+  testConnectionAndLoad();
+</script>
+</body>
+</html>

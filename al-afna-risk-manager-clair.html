@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager — Plateforme GRC inspirée ISO/IEC 27005</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    
+    --bg: #F6F7FA;
+    --bg-raised: #FFFFFF;
+    --line: #E1E5EC;
+    --ink: #141A26;
+    --ink-dim: #5B6579;
+    --teal: #0F766E;
+    --teal-ink: #FFFFFF;
+  
+    --crit: #E5484D; --high: #F0A63A; --med: #E8C547; --low: #3FB27F;
+    --display: 'Space Grotesk', system-ui, sans-serif;
+    --body: 'IBM Plex Sans', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; -webkit-font-smoothing:antialiased;}
+  a{color:inherit;}
+  img,svg{max-width:100%;}
+  .wrap{max-width:1120px; margin:0 auto; padding:0 32px;}
+
+  .grid-bg{
+    position:fixed; inset:0; z-index:-1; opacity:0.5;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 900px 600px at 70% 0%, black 10%, transparent 70%);
+  }
+
+  header.nav{position:sticky; top:0; z-index:20; background:rgba(246,247,250,0.88); backdrop-filter: blur(10px); border-bottom:1px solid var(--line);}
+  .nav .wrap{display:flex; align-items:center; justify-content:space-between; height:64px; gap:16px;}
+  .brand{font-family:var(--mono); font-size:14px; letter-spacing:0.06em; color:var(--ink); white-space:nowrap;}
+  .brand b{color:var(--teal);}
+  .nav ul{display:flex; gap:26px; list-style:none;}
+  .nav ul a{font-size:13.5px; color:var(--ink-dim); text-decoration:none; transition:color .15s;}
+  .nav ul a:hover{color:var(--ink);}
+  .nav .btn{padding:9px 16px; font-size:13px;}
+
+  .hero{padding:96px 0 56px;}
+  .hero-grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:56px; align-items:center;}
+  .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:var(--teal); margin-bottom:18px; display:flex; align-items:center; gap:10px;}
+  .eyebrow::before{content:""; width:22px; height:1px; background:var(--teal); display:inline-block;}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(32px, 4.6vw, 52px); line-height:1.1; letter-spacing:-0.01em; margin-bottom:20px;}
+  h1 em{font-style:normal; color:var(--teal);}
+  .hero p.lead{color:var(--ink-dim); font-size:16.5px; max-width:48ch; margin-bottom:30px;}
+  .cta-row{display:flex; gap:14px; flex-wrap:wrap;}
+  .btn{font-family:var(--body); font-weight:600; font-size:14.5px; padding:13px 22px; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:transform .15s, opacity .15s;}
+  .btn-primary{background:var(--teal); color:var(--teal-ink);}
+  .btn-primary:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn-ghost{border:1px solid var(--line); color:var(--ink);}
+  .btn-ghost:hover{border-color:var(--teal); color:var(--teal);}
+
+  .matrix-card{background:var(--bg-raised); border:1px solid var(--line); border-radius:12px; padding:24px;}
+  .matrix-card .cap{font-family:var(--mono); font-size:11px; color:var(--ink-dim); letter-spacing:0.06em; display:flex; justify-content:space-between; margin-bottom:14px;}
+  .matrix{display:grid; grid-template-columns:repeat(5, 1fr); gap:5px; transform: scaleY(-1);}
+  .cell{aspect-ratio:1; border-radius:4px; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:11px; color:rgba(4,20,18,0.62); transform: scaleY(-1); transition: transform .12s ease;}
+  .cell:hover{transform: scaleY(-1) scale(1.08); z-index:2;}
+  .axis-label{font-family:var(--mono); font-size:10.5px; color:var(--ink-dim); text-align:center; margin-top:10px;}
+  .matrix-tip{font-family:var(--mono); font-size:11px; color:var(--ink-dim); margin-top:14px; min-height:16px;}
+
+  .stat-bar{display:flex; gap:28px; margin-top:48px; padding-top:26px; border-top:1px solid var(--line); flex-wrap:wrap;}
+  .stat{flex:1 1 150px;}
+  .stat-n{font-family:var(--display); font-size:23px; font-weight:700; color:var(--teal); line-height:1.15;}
+  .stat-l{font-family:var(--mono); font-size:10px; color:var(--ink-dim); margin-top:6px; text-transform:uppercase; letter-spacing:0.04em;}
+
+  section{padding:84px 0;}
+  section.alt{background:var(--bg-raised); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+  .section-head{max-width:660px; margin-bottom:44px;}
+  .section-head .eyebrow{margin-bottom:14px;}
+  h2{font-family:var(--display); font-size:clamp(24px,3.2vw,32px); font-weight:600; margin-bottom:14px;}
+  h2 span{color:var(--teal);}
+  .section-head p{color:var(--ink-dim); font-size:15px;}
+
+  .feature-grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:18px;}
+  .feature{background:var(--bg-raised); border:1px solid var(--line); border-radius:10px; padding:24px;}
+  .feature .num{font-family:var(--mono); color:var(--teal); font-size:12px; margin-bottom:12px;}
+  .feature h3{font-family:var(--display); font-size:16.5px; font-weight:600; margin-bottom:8px;}
+  .feature p{color:var(--ink-dim); font-size:13.5px;}
+
+  .case-grid{display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center;}
+  .net-card{background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:22px;}
+  .case-copy p{color:var(--ink-dim); font-size:14.5px; margin-bottom:14px;}
+  .case-copy .badge{font-family:var(--mono); font-size:11px; color:var(--teal); border:1px solid var(--line); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:14px;}
+
+  .incident-list{list-style:none; margin-top:10px;}
+  .incident-list li{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); font-size:13.5px; color:var(--ink-dim);}
+  .incident-list li b{color:var(--ink); font-weight:600; min-width:170px; display:inline-block;}
+  .dot{width:8px; height:8px; border-radius:50%; margin-top:6px; flex:none;}
+
+  .diff-grid{display:grid; grid-template-columns:repeat(4, 1fr); gap:16px;}
+  .diff{border:1px solid var(--line); border-radius:10px; padding:20px; background:var(--bg-raised);}
+  .diff .ic{font-family:var(--mono); color:var(--teal); font-size:20px; margin-bottom:10px;}
+  .diff h3{font-family:var(--display); font-size:15px; font-weight:600; margin-bottom:6px;}
+  .diff p{color:var(--ink-dim); font-size:13px;}
+
+  .domain-grid{display:grid; grid-template-columns:repeat(2, 1fr); gap:20px;}
+  .domain{border:1px solid var(--line); border-radius:12px; padding:24px; background:var(--bg-raised);}
+  .domain .tag{font-family:var(--mono); font-size:11px; color:var(--teal); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px; display:block;}
+  .domain h3{font-family:var(--display); font-size:19px; font-weight:600; margin-bottom:12px;}
+  .domain ul{list-style:none;}
+  .domain ul li{font-size:13.5px; color:var(--ink-dim); padding:6px 0; border-bottom:1px solid var(--line);}
+  .domain ul li:last-child{border-bottom:none;}
+  .domain ul li::before{content:"— "; color:var(--teal);}
+
+  .trust-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:18px;}
+  .trust{padding:20px; border:1px solid var(--line); border-radius:10px; background:var(--bg-raised);}
+  .trust h3{font-family:var(--display); font-size:15px; font-weight:600; margin-bottom:8px;}
+  .trust p{color:var(--ink-dim); font-size:13px;}
+
+  .about-grid{display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center;}
+  .about-copy p{color:var(--ink-dim); font-size:15px; margin-bottom:14px;}
+  .about-card{border:1px solid var(--line); border-radius:12px; padding:28px; background:var(--bg-raised);}
+  .about-card .row{display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--line); font-size:13.5px;}
+  .about-card .row:last-child{border-bottom:none;}
+  .about-card .row span:first-child{color:var(--ink-dim);}
+  .about-card .row span:last-child{font-family:var(--mono); color:var(--ink); text-align:right;}
+
+  .cta-final{text-align:center; padding:80px 0;}
+  .cta-final h2{margin-bottom:18px;}
+  .cta-final p{color:var(--ink-dim); font-size:15px; max-width:52ch; margin:0 auto 30px;}
+  .cta-final .cta-row{justify-content:center;}
+
+  footer{padding:44px 0; border-top:1px solid var(--line);}
+  footer .wrap{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;}
+  footer .f-mono{font-family:var(--mono); font-size:12px; color:var(--ink-dim);}
+
+  @media (max-width:900px){
+    .hero-grid{grid-template-columns:1fr;}
+    .case-grid{grid-template-columns:1fr;}
+    .about-grid{grid-template-columns:1fr;}
+    .feature-grid{grid-template-columns:repeat(2,1fr);}
+    .diff-grid{grid-template-columns:repeat(2,1fr);}
+    .domain-grid{grid-template-columns:1fr;}
+    .trust-grid{grid-template-columns:1fr;}
+  }
+  @media (max-width:620px){
+    .nav ul{display:none;}
+    .wrap{padding:0 20px;}
+    section{padding:60px 0;}
+    .hero{padding:52px 0 36px;}
+    .feature-grid{grid-template-columns:1fr;}
+    .diff-grid{grid-template-columns:1fr;}
+    .stat{flex:1 1 100%;}
+  }
+  </style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<header class="nav">
+  <div class="wrap">
+    <div class="brand"><b>&#9670;</b> AL-AFNA&nbsp;RISK&nbsp;MANAGER</div>
+    <ul>
+      <li><a href="#cas">Cas d'usage</a></li>
+      <li><a href="#fonctionnement">Fonctionnalités</a></li>
+      <li><a href="#domaines">Domaines</a></li>
+      <li><a href="#apropos">À propos</a></li>
+    </ul>
+    <a href="#contact" class="btn btn-primary">Demander une démo</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">AL-AFNA Tech — Cybersécurité &amp; GRC</div>
+      <h1>Voyez le risque <em>avant</em><br>qu'il ne devienne un incident.</h1>
+      <p class="lead">AL-AFNA Risk Manager guide votre organisation à travers une analyse de risques informatiques inspirée d'ISO/IEC 27005 — de la cartographie des actifs jusqu'au rapport d'audit, assistée par intelligence artificielle.</p>
+      <div class="cta-row">
+        <a href="#contact" class="btn btn-primary">Demander une démonstration →</a>
+        <a href="#fonctionnement" class="btn btn-ghost">Découvrir la méthode</a>
+      </div>
+    </div>
+    <div class="matrix-card">
+      <div class="cap"><span>MATRICE DE RISQUE</span><span>SCORE = V × I</span></div>
+      <div class="matrix" id="matrix"></div>
+      <div class="axis-label">Impact (1 → 5) — survolez une case</div>
+      <div class="matrix-tip" id="tip">&nbsp;</div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="stat-bar">
+      <div class="stat"><div class="stat-n">6</div><div class="stat-l">modules intégrés</div></div>
+      <div class="stat"><div class="stat-n">IA</div><div class="stat-l">analyse assistée</div></div>
+      <div class="stat"><div class="stat-n">ISO/IEC<br>27005</div><div class="stat-l">référentiel suivi</div></div>
+      <div class="stat"><div class="stat-n">PDF</div><div class="stat-l">rapports prêts à l'emploi</div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Le constat</div>
+      <h2>La gestion des risques ne devrait pas être <span>réservée aux grands groupes</span></h2>
+      <p>De nombreuses organisations, en particulier les PME d'Afrique francophone, ne disposent d'aucun outil accessible pour cartographier leurs actifs, identifier leurs risques et suivre leur traitement. Les référentiels existants sont solides, mais perçus comme complexes et réservés à des équipes sécurité dédiées.</p>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="cas">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Étude de cas</div>
+      <h2>AfriTech SARL — <span>une PME type</span>, pour illustrer la méthode</h2>
+      <p>Pour montrer concrètement comment la plateforme fonctionne, nous nous appuyons sur un cas représentatif : une PME organisée en trois services (Direction, Comptabilité, IT/DSI), avec un serveur de fichiers et un serveur applicatif — une structure que l'on retrouve chez beaucoup d'organisations clientes.</p>
+    </div>
+    <div class="case-grid">
+      <div class="net-card">
+  <svg viewBox="0 0 400 260" width="100%" height="auto">
+    <line x1="200" y1="40" x2="200" y2="90" stroke="var(--line)" stroke-width="2"/>
+    <line x1="200" y1="90" x2="90" y2="150" stroke="var(--line)" stroke-width="2"/>
+    <line x1="200" y1="90" x2="200" y2="150" stroke="var(--line)" stroke-width="2"/>
+    <line x1="200" y1="90" x2="310" y2="150" stroke="var(--line)" stroke-width="2"/>
+    <line x1="90" y1="150" x2="60" y2="210" stroke="var(--line)" stroke-width="1.5"/>
+    <line x1="90" y1="150" x2="120" y2="210" stroke="var(--line)" stroke-width="1.5"/>
+    <line x1="200" y1="150" x2="200" y2="210" stroke="var(--line)" stroke-width="1.5"/>
+    <line x1="310" y1="150" x2="280" y2="210" stroke="var(--line)" stroke-width="1.5"/>
+    <line x1="310" y1="150" x2="340" y2="210" stroke="var(--line)" stroke-width="1.5"/>
+
+    <rect x="176" y="18" width="48" height="26" rx="4" fill="var(--bg-raised)" stroke="var(--teal)"/>
+    <text x="200" y="35" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="var(--teal)">Routeur</text>
+
+    <rect x="66" y="130" width="48" height="24" rx="4" fill="var(--bg-raised)" stroke="var(--ink-dim)"/>
+    <text x="90" y="146" text-anchor="middle" font-family="IBM Plex Mono" font-size="8.5" fill="var(--ink-dim)">Direction</text>
+    <rect x="176" y="130" width="48" height="24" rx="4" fill="var(--bg-raised)" stroke="var(--ink-dim)"/>
+    <text x="200" y="146" text-anchor="middle" font-family="IBM Plex Mono" font-size="8.5" fill="var(--ink-dim)">Comptabilité</text>
+    <rect x="286" y="130" width="48" height="24" rx="4" fill="var(--bg-raised)" stroke="var(--ink-dim)"/>
+    <text x="310" y="146" text-anchor="middle" font-family="IBM Plex Mono" font-size="8.5" fill="var(--ink-dim)">IT / DSI</text>
+
+    <circle cx="60" cy="220" r="10" fill="var(--bg)" stroke="var(--ink)"/>
+    <circle cx="120" cy="220" r="10" fill="var(--bg)" stroke="var(--ink)"/>
+    <circle cx="200" cy="220" r="10" fill="var(--bg)" stroke="var(--crit)"/>
+    <circle cx="280" cy="220" r="10" fill="var(--bg)" stroke="var(--ink)"/>
+    <circle cx="340" cy="220" r="10" fill="var(--bg)" stroke="var(--ink)"/>
+    <text x="200" y="245" text-anchor="middle" font-family="IBM Plex Mono" font-size="8.5" fill="var(--crit)">Serveur ERP — actif critique</text>
+  </svg></div>
+      <div class="case-copy">
+        <span class="badge">Scénarios de risque identifiés</span>
+        <p>Une fois le contexte AfriTech SARL modélisé dans la plateforme, plusieurs scénarios de risque typiques ressortent immédiatement :</p>
+        <ul class="incident-list">
+          <li><span class="dot" style="background:var(--high)"></span><b>Segmentation réseau</b> Absence de cloisonnement entre services</li>
+          <li><span class="dot" style="background:var(--crit)"></span><b>Accès inter-services</b> Communication non maîtrisée entre VLANs</li>
+          <li><span class="dot" style="background:var(--med)"></span><b>Administration à distance</b> Protocole non chiffré utilisé</li>
+          <li><span class="dot" style="background:var(--low)"></span><b>Continuité de service</b> Dépendance à un point unique de panne</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="fonctionnement">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Fonctionnalités</div>
+      <h2>Tout le cycle d'analyse, <span>dans un seul outil</span></h2>
+      <p>Chaque fonctionnalité correspond à une étape réelle d'une démarche de gestion des risques, sans complexité superflue.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature"><div class="num">01</div><h3>Cadrage du périmètre</h3><p>Définir précisément ce qui est évalué : organisation, objectifs, portée.</p></div>
+      <div class="feature"><div class="num">02</div><h3>Cartographie des actifs</h3><p>Recenser ce qui a de la valeur — serveurs, postes, données — et leur criticité.</p></div>
+      <div class="feature"><div class="num">03</div><h3>Détection des menaces</h3><p>Associer à chaque actif les menaces et vulnérabilités qui le concernent.</p></div>
+      <div class="feature"><div class="num">04</div><h3>Analyse automatique</h3><p>Score de risque calculé et classé automatiquement, sans feuille de calcul.</p></div>
+      <div class="feature"><div class="num">05</div><h3>Recommandations</h3><p>Mesures de traitement proposées, alignées sur ISO/IEC 27002.</p></div>
+      <div class="feature"><div class="num">06</div><h3>Rapports &amp; documents</h3><p>Rapport d'audit et politique de sécurité générés en PDF, prêts à partager.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Ce qui fait la différence</div>
+      <h2>Une rigueur normative, <span>sans la lourdeur</span></h2>
+    </div>
+    <div class="diff-grid">
+      <div class="diff"><div class="ic">◆</div><h3>Inspiré d'ISO/IEC 27005</h3><p>La logique d'un référentiel international, sans son coût de mise en œuvre.</p></div>
+      <div class="diff"><div class="ic">◆</div><h3>Assisté par IA</h3><p>Suggestions de menaces et de recommandations générées automatiquement.</p></div>
+      <div class="diff"><div class="ic">◆</div><h3>Pensé pour le terrain africain</h3><p>Accessible sans expertise GRC interne préalable.</p></div>
+      <div class="diff"><div class="ic">◆</div><h3>Léger et rapide à déployer</h3><p>Une architecture simple, sans infrastructure lourde à maintenir.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="domaines">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Nos domaines d'intervention</div>
+      <h2>AL-AFNA Risk Manager s'inscrit dans <span>une offre plus large</span></h2>
+      <p>AL-AFNA Tech accompagne les organisations sur quatre pôles complémentaires.</p>
+    </div>
+    <div class="domain-grid">
+      <div class="domain">
+        <span class="tag">Pôle 01</span>
+        <h3>Cybersécurité</h3>
+        <ul>
+          <li>Audit de sécurité</li>
+          <li>Analyse de vulnérabilités</li>
+          <li>GRC &amp; conformité (ISO 27001 / 27005)</li>
+          <li>Sensibilisation des équipes</li>
+        </ul>
+      </div>
+      <div class="domain">
+        <span class="tag">Pôle 02</span>
+        <h3>Intelligence Artificielle</h3>
+        <ul>
+          <li>Automatisation de processus</li>
+          <li>Assistants IA métier</li>
+          <li>Analyse prédictive</li>
+        </ul>
+      </div>
+      <div class="domain">
+        <span class="tag">Pôle 03</span>
+        <h3>Data Analyse</h3>
+        <ul>
+          <li>Tableaux de bord &amp; reporting</li>
+          <li>Nettoyage et structuration de données</li>
+          <li>Aide à la décision</li>
+        </ul>
+      </div>
+      <div class="domain">
+        <span class="tag">Pôle 04</span>
+        <h3>Réseaux informatiques</h3>
+        <ul>
+          <li>Conception &amp; simulation réseau</li>
+          <li>Sécurisation (VLAN, ACL, VPN)</li>
+          <li>Supervision</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Sécurité &amp; confiance</div>
+      <h2>Vos données, <span>traitées avec rigueur</span></h2>
+    </div>
+    <div class="trust-grid">
+      <div class="trust"><h3>Hébergement sécurisé</h3><p>Base de données PostgreSQL gérée via Supabase, avec authentification dédiée.</p></div>
+      <div class="trust"><h3>Confidentialité</h3><p>Les données d'une organisation ne sont jamais partagées avec une autre.</p></div>
+      <div class="trust"><h3>Traçabilité</h3><p>Chaque analyse est horodatée et rattachée à un contexte précis.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="apropos">
+  <div class="wrap about-grid">
+    <div class="about-copy">
+      <div class="eyebrow">À propos</div>
+      <h2>AL-AFNA Tech, <span>né au Niger</span></h2>
+      <p>AL-AFNA Tech est le pôle cybersécurité et technologie du groupe AL-AFNA. Notre mission : rendre la gestion des risques numériques accessible aux organisations d'Afrique francophone, sans complexité inutile.</p>
+      <p>AL-AFNA Risk Manager est notre première plateforme, pensée comme un point d'entrée concret vers une démarche de sécurité structurée.</p>
+    </div>
+    <div class="about-card">
+      <div class="row"><span>Groupe</span><span>AL-AFNA Groupe</span></div>
+      <div class="row"><span>Pôle</span><span>AL-AFNA Tech</span></div>
+      <div class="row"><span>Ancrage</span><span>Niamey, Niger</span></div>
+      <div class="row"><span>Zone d'action</span><span>Afrique francophone</span></div>
+      <div class="row"><span>Référentiel suivi</span><span>ISO/IEC 27005</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-final" id="contact">
+  <div class="wrap">
+    <h2>Prêt à cartographier <span>vos risques</span> ?</h2>
+    <p>Discutons de ce à quoi une démarche de gestion des risques pourrait ressembler pour votre organisation.</p>
+    <div class="cta-row">
+      <a href="#" class="btn btn-primary">Demander une démonstration →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="f-mono">AL-AFNA TECH — UN PÔLE D'AL-AFNA GROUPE</div>
+    <div class="f-mono">NIAMEY, NIGER</div>
+  </div>
+</footer>
+
+<script>
+  const grid = document.getElementById('matrix');
+  const tip = document.getElementById('tip');
+  const cs = getComputedStyle(document.documentElement);
+  const levelColor = (s) => s>=15 ? cs.getPropertyValue('--crit') : s>=9 ? cs.getPropertyValue('--high') : s>=4 ? cs.getPropertyValue('--med') : cs.getPropertyValue('--low');
+  const levelName = (s) => s>=15 ? 'Critique' : s>=9 ? 'Élevé' : s>=4 ? 'Moyen' : 'Faible';
+  for(let v=1; v<=5; v++){
+    for(let i=1; i<=5; i++){
+      const score = v*i;
+      const cell = document.createElement('div');
+      cell.className='cell';
+      cell.style.background = levelColor(score);
+      cell.textContent = score;
+      cell.addEventListener('mouseenter', ()=>{ tip.textContent = `Vraisemblance ${v} × Impact ${i} = ${score} → ${levelName(score)}`; });
+      cell.addEventListener('mouseleave', ()=>{ tip.textContent=''; });
+      grid.appendChild(cell);
+    }
+  }
+</script>
+</body>
+</html>

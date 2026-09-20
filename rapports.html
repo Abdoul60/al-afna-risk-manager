@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager — Rapports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/context-helper.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  select#contexteSelect{margin-bottom:20px;}
+  .summary-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px;}
+  @media (max-width:700px){ .summary-grid{grid-template-columns:1fr;} }
+  .summary-item{background:var(--bg-raised); border:1px solid var(--line); border-radius:10px; padding:20px; text-align:center;}
+  .summary-n{font-family:var(--display); font-size:26px; font-weight:700; color:var(--teal);}
+  .summary-l{font-family:var(--mono); font-size:11px; color:var(--ink-dim); margin-top:4px; text-transform:uppercase;}
+  .chart-row{display:flex; align-items:center; gap:12px; margin-bottom:12px;}
+  .chart-label{width:80px; font-family:var(--mono); font-size:12px; flex:none;}
+  .chart-track{flex:1; background:var(--bg); border-radius:5px; height:18px; overflow:hidden;}
+  .chart-fill{height:100%; border-radius:5px; transition:width .4s ease;}
+  .chart-count{width:28px; text-align:right; font-family:var(--mono); font-size:12px; color:var(--ink-dim); flex:none;}
+  .matrix-grid{display:grid; grid-template-columns:repeat(5, 1fr); gap:5px; max-width:340px; transform:scaleY(-1);}
+  .matrix-cell{
+    aspect-ratio:1; border-radius:4px; display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-size:13px; font-weight:600; color:rgba(4,20,18,0.7); transform:scaleY(-1);
+    cursor:default; transition:transform .12s ease;
+  }
+  .matrix-cell:hover{transform:scaleY(-1) scale(1.08); z-index:2;}
+  .matrix-axis{font-family:var(--mono); font-size:10.5px; color:var(--ink-dim); margin-top:8px;}
+  .matrix-tip{font-family:var(--mono); font-size:11.5px; color:var(--ink-dim); margin-top:10px; min-height:16px;}
+  .report-actions{display:flex; gap:16px; flex-wrap:wrap;}
+  #genMsg{font-family:var(--mono); font-size:12.5px; margin-top:12px; min-height:16px;}
+  .ok{color:var(--low);} .err{color:var(--crit);}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
+    <ul>
+      <li><a href="index.html">Accueil</a></li>
+      <li><a href="actifs.html">Actifs</a></li>
+      <li><a href="menaces.html">Menaces</a></li>
+      <li><a href="risques.html">Risques</a></li>
+      <li><a href="traitements.html">Traitements</a></li>
+    </ul>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Rapports</h1>
+    <p class="subtitle">Étape 8 — générer le rapport d'audit et le document de recommandations, nommés d'après l'entreprise étudiée.</p>
+
+    <label for="contexteSelect">Contexte d'évaluation à rapporter</label>
+    <select id="contexteSelect"></select>
+
+    <div class="summary-grid">
+      <div class="summary-item"><div class="summary-n" id="cntActifs">—</div><div class="summary-l">Actifs</div></div>
+      <div class="summary-item"><div class="summary-n" id="cntRisques">—</div><div class="summary-l">Risques identifiés</div></div>
+      <div class="summary-item"><div class="summary-n" id="cntTrait">—</div><div class="summary-l">Traitements définis</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Répartition des risques par niveau</h2>
+      <div id="chartWrap"><p style="color:var(--ink-dim); font-size:13px;">Chargement…</p></div>
+    </div>
+
+    <div class="card">
+      <h2>Matrice des risques (vraisemblance × impact)</h2>
+      <p style="margin-bottom:14px;">Contexte sélectionné — survole une case pour le détail.</p>
+      <div id="matrixWrap"><p style="color:var(--ink-dim); font-size:13px;">Chargement…</p></div>
+    </div>
+
+    <div class="card">
+      <h2>Synthèse managériale (IA)</h2>
+      <p style="margin-bottom:16px;">Génère un paragraphe de synthèse, rédigé pour une direction non technique, à partir des chiffres de l'évaluation.</p>
+      <button type="button" class="btn btn-ghost" onclick="genererSynthese()">✨ Générer la synthèse via IA</button>
+      <div id="syntheseMsg" style="font-family:var(--mono); font-size:12px; color:var(--ink-dim); margin:10px 0;"></div>
+      <textarea id="syntheseTexte" rows="4" placeholder="La synthèse générée apparaîtra ici — tu peux la modifier avant de l'inclure au rapport."></textarea>
+    </div>
+
+    <div class="card">
+      <h2>Rapport d'audit</h2>
+      <p style="margin-bottom:16px;">Nom du fichier généré d'après l'entreprise sélectionnée, dans les 3 formats.</p>
+      <div class="report-actions">
+        <button class="btn" onclick="genererRapportAudit()">📄 PDF</button>
+        <button class="btn btn-ghost" onclick="genererRapportAuditWord()">📝 Word</button>
+        <button class="btn btn-ghost" onclick="genererRapportAuditExcel()">📊 Excel</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Document de recommandations</h2>
+      <div class="report-actions">
+        <button class="btn" onclick="genererRecommandations()">📋 PDF</button>
+        <button class="btn btn-ghost" onclick="genererRecommandationsWord()">📝 Word</button>
+        <button class="btn btn-ghost" onclick="genererRecommandationsExcel()">📊 Excel</button>
+      </div>
+      <div id="genMsg"></div>
+    </div>
+
+    <div class="page-nav">
+      <a href="traitements.html">← Traitements</a>
+      <a href="index.html" class="next">Terminer — retour à l'accueil ✓</a>
+    </div>
+  </div>
+</main>
+
+<script src="assets/supabase-config.js"></script>
+<script>
+  let currentContexteId = null;
+  let currentContexteNom = '';
+
+  function slug(text){
+    return text.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  }
+
+  async function loadContextes(){
+    const sel = document.getElementById('contexteSelect');
+    const { data, error } = await supabaseClient.from('contexte').select('*').order('created_at', {ascending:false});
+    if (error){ sel.innerHTML = `<option>Erreur: ${error.message}</option>`; return; }
+    if (!data || data.length === 0){ sel.innerHTML = `<option>Aucun contexte</option>`; return; }
+    sel.innerHTML = data.map(c => `<option value="${c.id}">${c.nom_organisation}</option>`).join('');
+    const selected = getSelectedContexteId();
+    const match = data.find(c => c.id === selected);
+    currentContexteId = match ? match.id : data[0].id;
+    currentContexteNom = match ? match.nom_organisation : data[0].nom_organisation;
+    sel.value = currentContexteId;
+    sel.addEventListener('change', (e) => {
+      currentContexteId = e.target.value;
+      setSelectedContexteId(currentContexteId);
+      currentContexteNom = e.target.options[e.target.selectedIndex].text;
+      loadSummary();
+    });
+    loadSummary();
+  }
+
+  async function loadSummary(){
+    const { data: actifs } = await supabaseClient.from('actifs').select('id').eq('contexte_id', currentContexteId);
+    const { data: risques } = await supabaseClient.from('risques').select('id').eq('contexte_id', currentContexteId);
+    const risqueIds = (risques || []).map(r => r.id);
+    let traitCount = 0;
+    if (risqueIds.length){
+      const { data: traits } = await supabaseClient.from('traitements').select('id').in('risque_id', risqueIds);
+      traitCount = (traits || []).length;
+    }
+    document.getElementById('cntActifs').textContent = (actifs || []).length;
+    document.getElementById('cntRisques').textContent = (risques || []).length;
+    document.getElementById('cntTrait').textContent = traitCount;
+    loadChart();
+    loadMatrix();
+  }
+
+  // -- Graphique de répartition des risques par niveau --
+  async function loadChart(){
+    const wrap = document.getElementById('chartWrap');
+    const { data: risques, error } = await supabaseClient.from('risques').select('niveau').eq('contexte_id', currentContexteId);
+    if (error){ wrap.innerHTML = `<p style="color:var(--crit); font-size:13px;">Erreur : ${error.message}</p>`; return; }
+    if (!risques || risques.length === 0){
+      wrap.innerHTML = `<p style="color:var(--ink-dim); font-size:13px;">Aucun risque enregistré pour ce contexte.</p>`;
+      return;
+    }
+    const niveaux = [
+      { nom:'Critique', couleur:'var(--crit)' },
+      { nom:'Élevé', couleur:'var(--high)' },
+      { nom:'Moyen', couleur:'var(--med)' },
+      { nom:'Faible', couleur:'var(--low)' },
+    ];
+    const total = risques.length;
+    const counts = {};
+    niveaux.forEach(n => counts[n.nom] = risques.filter(r => r.niveau === n.nom).length);
+    const max = Math.max(...Object.values(counts), 1);
+
+    wrap.innerHTML = niveaux.map(n => {
+      const c = counts[n.nom];
+      const pct = Math.round((c / max) * 100);
+      return `
+        <div class="chart-row">
+          <div class="chart-label" style="color:${n.couleur}">${n.nom}</div>
+          <div class="chart-track"><div class="chart-fill" style="width:${pct}%; background:${n.couleur};"></div></div>
+          <div class="chart-count">${c}</div>
+        </div>`;
+    }).join('') + `<p style="color:var(--ink-dim); font-size:12px; margin-top:8px;">Total : ${total} risque(s) identifié(s).</p>`;
+  }
+
+  // -- Matrice du contexte sélectionné --
+  async function loadMatrix(){
+    const wrap = document.getElementById('matrixWrap');
+    const { data: risques, error } = await supabaseClient.from('risques').select('vraisemblance, impact, score').eq('contexte_id', currentContexteId);
+    if (error){ wrap.innerHTML = `<p style="color:var(--crit); font-size:13px;">Erreur : ${error.message}</p>`; return; }
+
+    const levelColor = (s) => s>=15 ? 'var(--crit)' : s>=9 ? 'var(--high)' : s>=4 ? 'var(--med)' : 'var(--low)';
+    let grid = '';
+    for (let v=1; v<=5; v++){
+      for (let i=1; i<=5; i++){
+        const score = v*i;
+        const count = (risques || []).filter(r => r.vraisemblance === v && r.impact === i).length;
+        grid += `<div class="matrix-cell" style="background:${levelColor(score)}"
+                   onmouseenter="document.getElementById('matrixTip').textContent = 'Vraisemblance ${v} × Impact ${i} = ${score} — ${count} risque(s)'"
+                   onmouseleave="document.getElementById('matrixTip').textContent = ''">
+                   ${count > 0 ? count : ''}
+                 </div>`;
+      }
+    }
+    wrap.innerHTML = `<div class="matrix-grid">${grid}</div>
+      <div class="matrix-axis">Impact (1 → 5) — chaque case affiche le nombre de risques à ce score</div>
+      <div class="matrix-tip" id="matrixTip">&nbsp;</div>`;
+  }
+
+  // -- IA : synthèse managériale --
+  async function genererSynthese(){
+    const msg = document.getElementById('syntheseMsg');
+    msg.textContent = '⏳ L\'IA rédige la synthèse…';
+    try {
+      const { data: risques } = await supabaseClient.from('risques').select('niveau').eq('contexte_id', currentContexteId);
+      const { data: actifs } = await supabaseClient.from('actifs').select('id').eq('contexte_id', currentContexteId);
+      const risquesCritiques = (risques || []).filter(r => r.niveau === 'Critique' || r.niveau === 'Élevé').length;
+
+      const { data, error } = await supabaseClient.functions.invoke('ai-assistant', {
+        body: { task: 'synthese_rapport', payload: {
+          nomOrganisation: currentContexteNom,
+          nbActifs: (actifs || []).length,
+          nbRisques: (risques || []).length,
+          risquesCritiques,
+        }}
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      document.getElementById('syntheseTexte').value = data.synthese || '';
+      msg.textContent = '✅ Synthèse générée — modifiable avant export, elle sera incluse au rapport d\'audit.';
+    } catch (e){
+      msg.textContent = '❌ ' + e.message;
+    }
+  }
+
+  async function fetchFullData(){
+    const { data: contexte } = await supabaseClient.from('contexte').select('*').eq('id', currentContexteId).single();
+    const { data: actifs } = await supabaseClient.from('actifs').select('*').eq('contexte_id', currentContexteId);
+    const { data: risques } = await supabaseClient
+      .from('risques').select('*, actifs(nom), menaces(nom)')
+      .eq('contexte_id', currentContexteId).order('score', {ascending:false});
+    const risqueIds = (risques || []).map(r => r.id);
+    let traitements = [];
+    if (risqueIds.length){
+      const { data: t } = await supabaseClient
+        .from('traitements').select('*, risques(score, niveau, actifs(nom), menaces(nom))')
+        .in('risque_id', risqueIds);
+      traitements = t || [];
+    }
+    return { contexte, actifs: actifs || [], risques: risques || [], traitements };
+  }
+
+  // Utilitaire : écrit une ligne, saute de page si besoin
+  function writeLine(doc, y, text, opts = {}){
+    const pageHeight = doc.internal.pageSize.getHeight();
+    if (y > pageHeight - 20){
+      doc.addPage();
+      y = 20;
+    }
+    doc.text(text, opts.x || 15, y, opts.opts || {});
+    return y + (opts.gap || 7);
+  }
+
+  async function genererRapportAudit(){
+    const msg = document.getElementById('genMsg');
+    msg.className=''; msg.textContent = 'Génération en cours…';
+    try{
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const { contexte, actifs, risques } = await fetchFullData();
+      const nomOrg = contexte.nom_organisation;
+
+      let y = 20;
+      doc.setFont('helvetica','bold'); doc.setFontSize(16);
+      y = writeLine(doc, y, `Rapport d'audit — ${nomOrg}`, { gap: 10 });
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      y = writeLine(doc, y, `Périmètre : ${contexte.perimetre || '—'}`, { gap: 6 });
+      y = writeLine(doc, y, `Date de génération : ${new Date().toLocaleDateString('fr-FR')}`, { gap: 12 });
+
+      const synthese = document.getElementById('syntheseTexte').value.trim();
+      if (synthese){
+        doc.setFont('helvetica','bold'); doc.setFontSize(12);
+        y = writeLine(doc, y, 'Synthèse managériale', { gap: 8 });
+        doc.setFont('helvetica','normal'); doc.setFontSize(10);
+        const lignes = doc.splitTextToSize(synthese, 180);
+        lignes.forEach(l => { y = writeLine(doc, y, l, { gap: 6 }); });
+        y += 6;
+      }
+
+      doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      y = writeLine(doc, y, 'Inventaire des actifs', { gap: 8 });
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      if (actifs.length === 0){
+        y = writeLine(doc, y, 'Aucun actif enregistré.');
+      } else {
+        actifs.forEach(a => {
+          doc.splitTextToSize(`• ${a.nom} (${a.type}) — C:${a.valeur_confidentialite} I:${a.valeur_integrite} D:${a.valeur_disponibilite}`, 180)
+            .forEach(l => { y = writeLine(doc, y, l); });
+        });
+      }
+
+      y += 6;
+      doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      y = writeLine(doc, y, 'Répartition des risques par niveau', { gap: 8 });
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      const niveauxPdf = [
+        { nom:'Critique', couleur:[229,72,77] },
+        { nom:'Élevé', couleur:[240,166,58] },
+        { nom:'Moyen', couleur:[232,197,71] },
+        { nom:'Faible', couleur:[63,178,127] },
+      ];
+      const maxCount = Math.max(...niveauxPdf.map(n => risques.filter(r => r.niveau === n.nom).length), 1);
+      const trackWidth = 100; // largeur totale de la piste, en mm
+      niveauxPdf.forEach(n => {
+        const c = risques.filter(r => r.niveau === n.nom).length;
+        const barWidth = (c / maxCount) * trackWidth;
+        // Piste grise en arrière-plan, toujours visible même à 0
+        doc.setFillColor(230, 230, 230);
+        doc.rect(45, y - 4, trackWidth, 5, 'F');
+        // Barre colorée par-dessus, proportionnelle au nombre
+        if (barWidth > 0){
+          doc.setFillColor(...n.couleur);
+          doc.rect(45, y - 4, barWidth, 5, 'F');
+        }
+        doc.setTextColor(0,0,0);
+        doc.text(`${n.nom}`, 15, y);
+        doc.text(`${c}`, 148, y);
+        y += 8;
+      });
+      y += 4;
+
+      doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      y = writeLine(doc, y, 'Risques identifiés (triés par score décroissant)', { gap: 8 });
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      if (risques.length === 0){
+        y = writeLine(doc, y, 'Aucun risque enregistré.');
+      } else {
+        risques.forEach(r => {
+          const actifNom = r.actifs ? r.actifs.nom : '—';
+          const menaceNom = r.menaces ? r.menaces.nom : '—';
+          doc.splitTextToSize(`• ${actifNom} / ${menaceNom} — Score ${r.score} (${r.niveau})`, 180)
+            .forEach(l => { y = writeLine(doc, y, l); });
+        });
+      }
+
+      doc.save(`Rapport_Audit_${slug(nomOrg)}.pdf`);
+      msg.className='ok'; msg.textContent = '✅ Rapport d\'audit généré et téléchargé.';
+    } catch(e){
+      msg.className='err'; msg.textContent = '❌ ' + e.message;
+    }
+  }
+
+  async function genererRecommandations(){
+    const msg = document.getElementById('genMsg');
+    msg.className=''; msg.textContent = 'Génération en cours…';
+    try{
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const { contexte, traitements } = await fetchFullData();
+      const nomOrg = contexte.nom_organisation;
+
+      let y = 20;
+      doc.setFont('helvetica','bold'); doc.setFontSize(16);
+      y = writeLine(doc, y, `Document de recommandations — ${nomOrg}`, { gap: 10 });
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      y = writeLine(doc, y, `Date de génération : ${new Date().toLocaleDateString('fr-FR')}`, { gap: 12 });
+
+      doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      y = writeLine(doc, y, 'Mesures de traitement recommandées', { gap: 8 });
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+
+      if (!traitements || traitements.length === 0){
+        y = writeLine(doc, y, 'Aucun traitement enregistré pour ce contexte.');
+      } else {
+        traitements.forEach(t => {
+          const actifNom = t.risques?.actifs?.nom || '—';
+          const menaceNom = t.risques?.menaces?.nom || '—';
+          const niveau = t.risques?.niveau || '—';
+          y += 3;
+          doc.setFont('helvetica','bold');
+          doc.splitTextToSize(`${actifNom} / ${menaceNom} — Risque ${niveau}`, 180).forEach(l => { y = writeLine(doc, y, l); });
+          doc.setFont('helvetica','normal');
+          y = writeLine(doc, y, `   Option retenue : ${t.option_meta}`);
+          if (t.mesure_iso27002) doc.splitTextToSize(`   Mesure : ${t.mesure_iso27002}`, 175).forEach(l => { y = writeLine(doc, y, l); });
+          if (t.description_mesure) doc.splitTextToSize(`   Description : ${t.description_mesure}`, 175).forEach(l => { y = writeLine(doc, y, l); });
+          y = writeLine(doc, y, `   Responsable : ${t.responsable || '—'}  |  Statut : ${t.statut}`, { gap: 10 });
+        });
+      }
+
+      doc.save(`Recommandations_${slug(nomOrg)}.pdf`);
+      msg.className='ok'; msg.textContent = '✅ Document de recommandations généré et téléchargé.';
+    } catch(e){
+      msg.className='err'; msg.textContent = '❌ ' + e.message;
+    }
+  }
+
+  // ============================================================
+  // EXPORT WORD (.doc) — document HTML que Word ouvre nativement
+  // ============================================================
+  function telechargerWord(nomFichier, htmlInterne){
+    const htmlComplet = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head><meta charset="utf-8"><title>${nomFichier}</title></head>
+      <body style="font-family:Calibri, Arial, sans-serif;">${htmlInterne}</body></html>`;
+    const blob = new Blob(['\ufeff', htmlComplet], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${nomFichier}.doc`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function genererRapportAuditWord(){
+    const msg = document.getElementById('genMsg');
+    try {
+      const { contexte, actifs, risques } = await fetchFullData();
+      const nomOrg = contexte.nom_organisation;
+      const synthese = document.getElementById('syntheseTexte').value.trim();
+
+      let html = `<h1>Rapport d\'audit — ${nomOrg}</h1>
+        <p><b>Périmètre :</b> ${contexte.perimetre || '—'}<br>
+        <b>Date de génération :</b> ${new Date().toLocaleDateString('fr-FR')}</p>`;
+
+      if (synthese) html += `<h2>Synthèse managériale</h2><p>${synthese.replace(/\n/g,'<br>')}</p>`;
+
+      html += `<h2>Inventaire des actifs</h2><ul>`;
+      html += (actifs.length ? actifs : []).map(a =>
+        `<li>${a.nom} (${a.type}) — C:${a.valeur_confidentialite} I:${a.valeur_integrite} D:${a.valeur_disponibilite}</li>`
+      ).join('') || '<li>Aucun actif enregistré.</li>';
+      html += `</ul>`;
+
+      html += `<h2>Risques identifiés (triés par score décroissant)</h2><table border="1" cellpadding="6" style="border-collapse:collapse;">
+        <tr><th>Actif</th><th>Menace</th><th>Score</th><th>Niveau</th></tr>`;
+      html += (risques.length ? risques : []).map(r =>
+        `<tr><td>${r.actifs?.nom || '—'}</td><td>${r.menaces?.nom || '—'}</td><td>${r.score}</td><td>${r.niveau}</td></tr>`
+      ).join('') || '<tr><td colspan="4">Aucun risque enregistré.</td></tr>';
+      html += `</table>`;
+
+      telechargerWord(`Rapport_Audit_${slug(nomOrg)}`, html);
+      msg.className='ok'; msg.textContent = '✅ Rapport d\'audit (Word) téléchargé.';
+    } catch(e){ msg.className='err'; msg.textContent = '❌ ' + e.message; }
+  }
+
+  async function genererRecommandationsWord(){
+    const msg = document.getElementById('genMsg');
+    try {
+      const { contexte, traitements } = await fetchFullData();
+      const nomOrg = contexte.nom_organisation;
+
+      let html = `<h1>Document de recommandations — ${nomOrg}</h1>
+        <p><b>Date de génération :</b> ${new Date().toLocaleDateString('fr-FR')}</p>
+        <h2>Mesures de traitement recommandées</h2>`;
+
+      if (!traitements || traitements.length === 0){
+        html += `<p>Aucun traitement enregistré pour ce contexte.</p>`;
+      } else {
+        traitements.forEach(t => {
+          html += `<h3>${t.risques?.actifs?.nom || '—'} / ${t.risques?.menaces?.nom || '—'} — Risque ${t.risques?.niveau || '—'}</h3>
+            <p>
+              <b>Option retenue :</b> ${t.option_meta}<br>
+              ${t.mesure_iso27002 ? `<b>Mesure :</b> ${t.mesure_iso27002}<br>` : ''}
+              ${t.description_mesure ? `<b>Description :</b> ${t.description_mesure}<br>` : ''}
+              <b>Responsable :</b> ${t.responsable || '—'} &nbsp;|&nbsp; <b>Statut :</b> ${t.statut}
+            </p>`;
+        });
+      }
+
+      telechargerWord(`Recommandations_${slug(nomOrg)}`, html);
+      msg.className='ok'; msg.textContent = '✅ Document de recommandations (Word) téléchargé.';
+    } catch(e){ msg.className='err'; msg.textContent = '❌ ' + e.message; }
+  }
+  async function genererRecommandationsWord(){
+    const msg = document.getElementById('genMsg');
+    try {
+      const { contexte, traitements } = await fetchFullData();
+      const nomOrg = contexte.nom_organisation;
+
+      let html = `<h1>Document de recommandations — ${nomOrg}</h1>
+        <p><b>Date de génération :</b> ${new Date().toLocaleDateString('fr-FR')}</p>
+        <h2>Mesures de traitement recommandées</h2>`;
+
+      if (!traitements || traitements.length === 0){
+        html += `<p>Aucun traitement enregistré pour ce contexte.</p>`;
+      } else {
+        traitements.forEach(t => {
+          html += `<h3>${t.risques?.actifs?.nom || '—'} / ${t.risques?.menaces?.nom || '—'} — Risque ${t.risques?.niveau || '—'}</h3>
+            <p>
+              <b>Option retenue :</b> ${t.option_meta}<br>
+              ${t.mesure_iso27002 ? `<b>Mesure :</b> ${t.mesure_iso27002}<br>` : ''}
+              ${t.description_mesure ? `<b>Description :</b> ${t.description_mesure}<br>` : ''}
+              <b>Responsable :</b> ${t.responsable || '—'} &nbsp;|&nbsp; <b>Statut :</b> ${t.statut}
+            </p>`;
+        });
+      }
+
+      telechargerWord(`Recommandations_${slug(nomOrg)}`, html);
+      msg.className='ok'; msg.textContent = '✅ Document de recommandations (Word) téléchargé.';
+    } catch(e){ msg.className='err'; msg.textContent = '❌ ' + e.message; }
+  }
+
+  // ============================================================
+  // EXPORT EXCEL (.xlsx) — via SheetJS
+  // ============================================================
+  async function genererRapportAuditExcel(){
+    const msg = document.getElementById('genMsg');
+    try {
+      const { contexte, actifs, risques } = await fetchFullData();
+      const nomOrg = contexte.nom_organisation;
+
+      const wb = XLSX.utils.book_new();
+
+      const actifsRows = [['Nom', 'Type', 'Confidentialité', 'Intégrité', 'Disponibilité', 'Propriétaire']];
+      actifs.forEach(a => actifsRows.push([a.nom, a.type, a.valeur_confidentialite, a.valeur_integrite, a.valeur_disponibilite, a.proprietaire || '']));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(actifsRows), 'Actifs');
+
+      const risquesRows = [['Actif', 'Menace', 'Vraisemblance', 'Impact', 'Score', 'Niveau']];
+      risques.forEach(r => risquesRows.push([r.actifs?.nom || '—', r.menaces?.nom || '—', r.vraisemblance, r.impact, r.score, r.niveau]));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(risquesRows), 'Risques');
+
+      XLSX.writeFile(wb, `Rapport_Audit_${slug(nomOrg)}.xlsx`);
+      msg.className='ok'; msg.textContent = '✅ Rapport d\'audit (Excel) téléchargé.';
+    } catch(e){ msg.className='err'; msg.textContent = '❌ ' + e.message; }
+  }
+
+  async function genererRecommandationsExcel(){
+    const msg = document.getElementById('genMsg');
+    try {
+      const { contexte, traitements } = await fetchFullData();
+      const nomOrg = contexte.nom_organisation;
+
+      const rows = [['Actif', 'Menace', 'Niveau', 'Option retenue', 'Mesure ISO 27002', 'Description', 'Responsable', 'Statut']];
+      (traitements || []).forEach(t => rows.push([
+        t.risques?.actifs?.nom || '—',
+        t.risques?.menaces?.nom || '—',
+        t.risques?.niveau || '—',
+        t.option_meta,
+        t.mesure_iso27002 || '',
+        t.description_mesure || '',
+        t.responsable || '',
+        t.statut,
+      ]));
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Traitements');
+      XLSX.writeFile(wb, `Recommandations_${slug(nomOrg)}.xlsx`);
+      msg.className='ok'; msg.textContent = '✅ Document de recommandations (Excel) téléchargé.';
+    } catch(e){ msg.className='err'; msg.textContent = '❌ ' + e.message; }
+  }
+
+  loadContextes();
+</script>
+</body>
+</html>

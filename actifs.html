@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager — Actifs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/context-helper.js"></script>
+<style>
+  .grid-2{display:grid; grid-template-columns:380px 1fr; gap:24px; align-items:start;}
+  @media (max-width:820px){ .grid-2{grid-template-columns:1fr;} }
+  .row-actions{display:flex; gap:8px;}
+  .row-actions button{
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    padding:5px 10px; border-radius:5px; cursor:pointer; font-size:12.5px;
+  }
+  .row-actions button:hover{border-color:var(--teal); color:var(--teal);}
+  .row-actions button.danger:hover{border-color:var(--crit); color:var(--crit);}
+  .cid-badge{
+    font-family:var(--mono); font-size:11px; padding:2px 6px; border-radius:4px;
+    background:var(--bg); border:1px solid var(--line); margin-right:4px;
+  }
+  #formMsg{font-family:var(--mono); font-size:12.5px; margin-top:4px; min-height:16px;}
+  #formMsg.ok{color:var(--low);}
+  #formMsg.err{color:var(--crit);}
+  select#contexteSelect{margin-bottom:20px;}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
+    <ul>
+      <li><a href="index.html">Accueil</a></li>
+      <li><a href="actifs.html" class="active">Actifs</a></li>
+      <li><a href="menaces.html">Menaces</a></li>
+      <li><a href="risques.html">Risques</a></li>
+      <li><a href="traitements.html">Traitements</a></li>
+      <li><a href="rapports.html">Rapports</a></li>
+    </ul>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Inventaire des actifs</h1>
+    <p class="subtitle">Étape 4 — recenser les actifs d'un contexte d'évaluation (ex : AfriTech SARL).</p>
+
+    <label for="contexteSelect">Contexte d'évaluation actif</label>
+    <select id="contexteSelect"></select>
+
+    <div class="grid-2">
+      <!-- FORMULAIRE -->
+      <div class="card">
+        <h2>Ajouter un actif</h2>
+        <form id="actifForm">
+          <label for="nom">Nom de l'actif</label>
+          <input id="nom" placeholder="ex : Serveur ERP" required>
+
+          <label for="type">Type</label>
+          <select id="type" required>
+            <option value="">-- choisir --</option>
+            <option>Serveur</option>
+            <option>Poste de travail</option>
+            <option>Routeur / Switch</option>
+            <option>Application</option>
+            <option>Donnée</option>
+            <option>Autre</option>
+          </select>
+
+          <label for="proprietaire">Propriétaire / service</label>
+          <input id="proprietaire" placeholder="ex : Service IT">
+
+          <label for="c">Confidentialité (1-5)</label>
+          <input id="c" type="number" min="1" max="5" value="3" required>
+
+          <label for="i">Intégrité (1-5)</label>
+          <input id="i" type="number" min="1" max="5" value="3" required>
+
+          <label for="d">Disponibilité (1-5)</label>
+          <input id="d" type="number" min="1" max="5" value="3" required>
+
+          <button type="submit" class="btn">Enregistrer l'actif</button>
+          <div id="formMsg"></div>
+        </form>
+      </div>
+
+      <!-- LISTE -->
+      <div class="card">
+        <h2>Actifs enregistrés</h2>
+        <table>
+          <thead>
+            <tr><th>Nom</th><th>Type</th><th>C-I-D</th><th>Propriétaire</th><th></th></tr>
+          </thead>
+          <tbody id="actifsTable">
+            <tr><td colspan="5" style="color:var(--ink-dim)">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="page-nav">
+      <a href="index.html">← Accueil</a>
+      <a href="menaces.html" class="next">Menaces →</a>
+    </div>
+  </div>
+</main>
+
+<script src="assets/supabase-config.js"></script>
+<script>
+  let currentContexteId = null;
+
+  // -- Charger la liste des contextes ; rediriger vers l'accueil si aucun --
+  async function loadContextes(){
+    const sel = document.getElementById('contexteSelect');
+    const { data, error } = await supabaseClient.from('contexte').select('id, nom_organisation').order('created_at', {ascending:false});
+    if (error){ sel.innerHTML = `<option>Erreur: ${error.message}</option>`; return; }
+
+    if (!data || data.length === 0){
+      document.querySelector('main .wrap').innerHTML = `
+        <h1>Aucune entreprise sélectionnée</h1>
+        <p class="subtitle">Commence par créer une entreprise à évaluer depuis l'accueil.</p>
+        <a href="index.html" class="btn">← Retour à l'accueil</a>`;
+      return;
+    }
+
+    sel.innerHTML = data.map(c => `<option value="${c.id}">${c.nom_organisation}</option>`).join('');
+    // Priorité à l'entreprise choisie sur l'accueil, sinon la plus récente
+    const selected = getSelectedContexteId();
+    currentContexteId = (selected && data.some(c => c.id === selected)) ? selected : data[0].id;
+    sel.value = currentContexteId;
+    loadActifs();
+  }
+
+  document.getElementById('contexteSelect').addEventListener('change', (e) => {
+    currentContexteId = e.target.value;
+    setSelectedContexteId(currentContexteId);
+    loadActifs();
+  });
+
+  // -- Charger les actifs du contexte sélectionné --
+  async function loadActifs(){
+    const tbody = document.getElementById('actifsTable');
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--ink-dim)">Chargement…</td></tr>`;
+    const { data, error } = await supabaseClient
+      .from('actifs')
+      .select('*')
+      .eq('contexte_id', currentContexteId)
+      .order('created_at', { ascending:false });
+
+    if (error){
+      tbody.innerHTML = `<tr><td colspan="5" style="color:var(--crit)">Erreur : ${error.message}</td></tr>`;
+      return;
+    }
+    if (!data || data.length === 0){
+      tbody.innerHTML = `<tr><td colspan="5" style="color:var(--ink-dim)">Aucun actif enregistré pour ce contexte.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = data.map(a => `
+      <tr>
+        <td>${a.nom}</td>
+        <td>${a.type}</td>
+        <td>
+          <span class="cid-badge">C${a.valeur_confidentialite}</span>
+          <span class="cid-badge">I${a.valeur_integrite}</span>
+          <span class="cid-badge">D${a.valeur_disponibilite}</span>
+        </td>
+        <td>${a.proprietaire || '—'}</td>
+        <td class="row-actions">
+          <button class="danger" onclick="deleteActif('${a.id}')">Supprimer</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // -- Ajouter un actif --
+  document.getElementById('actifForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('formMsg');
+    msg.className=''; msg.textContent='';
+
+    const payload = {
+      contexte_id: currentContexteId,
+      nom: document.getElementById('nom').value.trim(),
+      type: document.getElementById('type').value,
+      proprietaire: document.getElementById('proprietaire').value.trim(),
+      valeur_confidentialite: parseInt(document.getElementById('c').value),
+      valeur_integrite: parseInt(document.getElementById('i').value),
+      valeur_disponibilite: parseInt(document.getElementById('d').value),
+    };
+
+    const { error } = await supabaseClient.from('actifs').insert([payload]);
+    if (error){
+      msg.className = 'err';
+      msg.textContent = '❌ ' + error.message;
+      return;
+    }
+    msg.className = 'ok';
+    msg.textContent = '✅ Actif enregistré.';
+    e.target.reset();
+    document.getElementById('c').value = 3;
+    document.getElementById('i').value = 3;
+    document.getElementById('d').value = 3;
+    loadActifs();
+  });
+
+  // -- Supprimer un actif --
+  async function deleteActif(id){
+    if (!confirm('Supprimer cet actif ?')) return;
+    const { error } = await supabaseClient.from('actifs').delete().eq('id', id);
+    if (error){ alert('Erreur : ' + error.message); return; }
+    loadActifs();
+  }
+
+  loadContextes();
+</script>
+</body>
+</html>

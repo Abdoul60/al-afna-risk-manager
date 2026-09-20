@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager — Analyse des risques</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/context-helper.js"></script>
+<style>
+  .grid-2{display:grid; grid-template-columns:380px 1fr; gap:24px; align-items:start;}
+  @media (max-width:820px){ .grid-2{grid-template-columns:1fr;} }
+  select#contexteSelect{margin-bottom:20px;}
+  #riskMsg{font-family:var(--mono); font-size:12.5px; margin-top:4px; min-height:16px;}
+  .ok{color:var(--low);} .err{color:var(--crit);}
+  .niveau{
+    font-family:var(--mono); font-size:11.5px; padding:3px 9px; border-radius:5px; font-weight:600;
+  }
+  .niveau.Critique{background:rgba(229,72,77,0.15); color:var(--crit);}
+  .niveau.Élevé{background:rgba(240,166,58,0.15); color:var(--high);}
+  .niveau.Moyen{background:rgba(232,197,71,0.15); color:var(--med);}
+  .niveau.Faible{background:rgba(63,178,127,0.15); color:var(--low);}
+  .row-actions button{
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    padding:5px 10px; border-radius:5px; cursor:pointer; font-size:12.5px;
+  }
+  .row-actions button.danger:hover{border-color:var(--crit); color:var(--crit);}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
+    <ul>
+      <li><a href="index.html">Accueil</a></li>
+      <li><a href="actifs.html">Actifs</a></li>
+      <li><a href="menaces.html">Menaces</a></li>
+      <li><a href="risques.html" class="active">Risques</a></li>
+      <li><a href="traitements.html">Traitements</a></li>
+      <li><a href="rapports.html">Rapports</a></li>
+    </ul>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Analyse des risques</h1>
+    <p class="subtitle">Étape 6 — combiner actif, menace et vulnérabilité ; le score est calculé automatiquement par la base de données.</p>
+
+    <label for="contexteSelect">Contexte d'évaluation actif</label>
+    <select id="contexteSelect"></select>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2>Nouveau risque</h2>
+        <form id="risqueForm">
+          <label for="rActif">Actif</label>
+          <select id="rActif" required></select>
+
+          <label for="rMenace">Menace</label>
+          <select id="rMenace" required></select>
+
+          <label for="rVuln">Vulnérabilité (optionnel)</label>
+          <select id="rVuln"><option value="">— aucune —</option></select>
+
+          <label for="rV">Vraisemblance (1-5)</label>
+          <input id="rV" type="number" min="1" max="5" value="3" required>
+
+          <label for="rI">Impact (1-5)</label>
+          <input id="rI" type="number" min="1" max="5" value="3" required>
+
+          <button type="submit" class="btn">Calculer et enregistrer</button>
+          <div id="riskMsg"></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Risques identifiés</h2>
+        <table>
+          <thead><tr><th>Actif</th><th>Menace</th><th>Score</th><th>Niveau</th><th></th></tr></thead>
+          <tbody id="risquesTable"><tr><td colspan="5" style="color:var(--ink-dim)">Chargement…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="page-nav">
+      <a href="menaces.html">← Menaces</a>
+      <a href="traitements.html" class="next">Traitements →</a>
+    </div>
+  </div>
+</main>
+
+<script src="assets/supabase-config.js"></script>
+<script>
+  let currentContexteId = null;
+  let actifsCache = [];
+
+  async function loadContextes(){
+    const sel = document.getElementById('contexteSelect');
+    const { data, error } = await supabaseClient.from('contexte').select('id, nom_organisation').order('created_at', {ascending:false});
+    if (error){ sel.innerHTML = `<option>Erreur: ${error.message}</option>`; return; }
+    if (!data || data.length === 0){
+      sel.innerHTML = `<option>Aucun contexte — crée d'abord un actif</option>`;
+      return;
+    }
+    sel.innerHTML = data.map(c => `<option value="${c.id}">${c.nom_organisation}</option>`).join('');
+    const selected = getSelectedContexteId();
+    currentContexteId = (selected && data.some(c => c.id === selected)) ? selected : data[0].id;
+    sel.value = currentContexteId;
+    sel.addEventListener('change', (e) => { currentContexteId = e.target.value; setSelectedContexteId(currentContexteId); refreshAll(); });
+    refreshAll();
+  }
+
+  function refreshAll(){
+    loadActifsSelect();
+    loadMenacesSelect();
+    loadRisques();
+  }
+
+  async function loadActifsSelect(){
+    const sel = document.getElementById('rActif');
+    const { data, error } = await supabaseClient.from('actifs').select('id, nom').eq('contexte_id', currentContexteId);
+    if (error){ sel.innerHTML = `<option>Erreur</option>`; return; }
+    actifsCache = data || [];
+    sel.innerHTML = actifsCache.length
+      ? actifsCache.map(a => `<option value="${a.id}">${a.nom}</option>`).join('')
+      : `<option value="">Aucun actif — ajoutes-en un</option>`;
+    loadVulnSelect();
+  }
+
+  async function loadMenacesSelect(){
+    const sel = document.getElementById('rMenace');
+    const { data, error } = await supabaseClient.from('menaces').select('id, nom');
+    if (error){ sel.innerHTML = `<option>Erreur</option>`; return; }
+    sel.innerHTML = (data && data.length)
+      ? data.map(m => `<option value="${m.id}">${m.nom}</option>`).join('')
+      : `<option value="">Aucune menace — ajoutes-en une</option>`;
+  }
+
+  async function loadVulnSelect(){
+    const sel = document.getElementById('rVuln');
+    if (actifsCache.length === 0){ sel.innerHTML = `<option value="">— aucune —</option>`; return; }
+    const ids = actifsCache.map(a => a.id);
+    const { data, error } = await supabaseClient.from('vulnerabilites').select('id, nom').in('actif_id', ids);
+    if (error){ sel.innerHTML = `<option value="">— aucune —</option>`; return; }
+    sel.innerHTML = `<option value="">— aucune —</option>` + (data || []).map(v => `<option value="${v.id}">${v.nom}</option>`).join('');
+  }
+
+  async function loadRisques(){
+    const tbody = document.getElementById('risquesTable');
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--ink-dim)">Chargement…</td></tr>`;
+    const { data, error } = await supabaseClient
+      .from('risques')
+      .select('*, actifs(nom), menaces(nom)')
+      .eq('contexte_id', currentContexteId)
+      .order('score', { ascending:false });
+    if (error){ tbody.innerHTML = `<tr><td colspan="5" style="color:var(--crit)">Erreur : ${error.message}</td></tr>`; return; }
+    if (!data || data.length === 0){ tbody.innerHTML = `<tr><td colspan="5" style="color:var(--ink-dim)">Aucun risque enregistré.</td></tr>`; return; }
+    tbody.innerHTML = data.map(r => `
+      <tr>
+        <td>${r.actifs ? r.actifs.nom : '—'}</td>
+        <td>${r.menaces ? r.menaces.nom : '—'}</td>
+        <td>${r.score}</td>
+        <td><span class="niveau ${r.niveau}">${r.niveau}</span></td>
+        <td class="row-actions"><button class="danger" onclick="deleteRisque('${r.id}')">Supprimer</button></td>
+      </tr>
+    `).join('');
+  }
+
+  document.getElementById('risqueForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('riskMsg');
+    const payload = {
+      contexte_id: currentContexteId,
+      actif_id: document.getElementById('rActif').value,
+      menace_id: document.getElementById('rMenace').value,
+      vulnerabilite_id: document.getElementById('rVuln').value || null,
+      vraisemblance: parseInt(document.getElementById('rV').value),
+      impact: parseInt(document.getElementById('rI').value),
+    };
+    if (!payload.actif_id || !payload.menace_id){
+      msg.className='err'; msg.textContent='❌ Choisis un actif et une menace.'; return;
+    }
+    // Note : score et niveau sont calculés automatiquement par PostgreSQL (colonnes generated)
+    const { error } = await supabaseClient.from('risques').insert([payload]);
+    if (error){ msg.className='err'; msg.textContent='❌ ' + error.message; return; }
+    msg.className='ok'; msg.textContent='✅ Risque calculé et enregistré.';
+    document.getElementById('rV').value = 3;
+    document.getElementById('rI').value = 3;
+    loadRisques();
+  });
+
+  async function deleteRisque(id){
+    if (!confirm('Supprimer ce risque ?')) return;
+    const { error } = await supabaseClient.from('risques').delete().eq('id', id);
+    if (error){ alert('Erreur : ' + error.message); return; }
+    loadRisques();
+  }
+
+  loadContextes();
+</script>
+</body>
+</html>
