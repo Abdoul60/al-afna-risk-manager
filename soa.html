@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager — Déclaration d'applicabilité (SoA)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/context-helper.js"></script>
+<style>
+  .soa-grid{display:grid; grid-template-columns:1fr 420px; gap:24px; align-items:start;}
+  @media (max-width:980px){ .soa-grid{grid-template-columns:1fr;} }
+  select#contexteSelect{margin-bottom:20px;}
+  .bar{height:8px; background:var(--line); border-radius:4px; overflow:hidden; margin:8px 0 4px;}
+  .bar i{display:block; height:100%; width:0; background:var(--low); transition:width .3s;}
+  .filters{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;}
+  .filters input,.filters select{flex:1; min-width:140px;}
+  .list{max-height:640px; overflow-y:auto;}
+  .list tr.sel td{background:rgba(63,178,127,0.10);}
+  .list tr[data-id]{cursor:pointer;}
+  .theme-row td{font-weight:600; color:var(--ink-dim); padding-top:16px;}
+  .code{font-family:var(--mono); font-size:12px; white-space:nowrap;}
+  .statut{font-family:var(--mono); font-size:11px; padding:3px 8px; border-radius:5px; border:1px solid var(--line); white-space:nowrap;}
+  .statut.oui{color:var(--low);} .statut.non{color:var(--ink-dim);}
+  #soaMsg{font-family:var(--mono); font-size:12.5px; margin-top:6px; min-height:16px;}
+  .ok{color:var(--low);} .err{color:var(--crit);}
+  .risk-link{display:flex; gap:8px; align-items:flex-start; font-size:13px; margin:6px 0;}
+  .risk-link input{width:auto; margin-top:3px;}
+  .hint{font-size:12.5px; color:var(--ink-dim);}
+  .rcard{margin-bottom:16px;}
+  .rhead{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px;}
+  .sug{padding:8px 0; border-top:1px solid var(--line); font-size:13.5px;}
+  .sug small{display:block; color:var(--ink-dim); font-size:12px;}
+  .pickbox{max-height:300px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin:10px 0;}
+  .pickbox label{display:flex; gap:8px; align-items:flex-start; font-size:13px; margin:5px 0;}
+  .pickbox input[type=checkbox]{width:auto; margin-top:3px;}
+  .pickbox h4{margin:10px 0 4px; color:var(--ink-dim); font-size:12px;}
+  .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
+    <ul>
+      <li><a href="index.html">Accueil</a></li>
+      <li><a href="actifs.html">Actifs</a></li>
+      <li><a href="menaces.html">Menaces</a></li>
+      <li><a href="risques.html">Risques</a></li>
+      <li><a href="traitements.html">Traitements</a></li>
+      <li><a href="soa.html" class="active">SoA</a></li>
+      <li><a href="rapports.html">Rapports</a></li>
+    </ul>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Déclaration d'applicabilité (SoA)</h1>
+    <p class="subtitle">Pour chaque mesure de l'Annexe A d'ISO/IEC 27001:2022 : applicable ou non, justification, état de mise en œuvre et risques couverts.</p>
+
+    <label for="contexteSelect">Contexte d'évaluation actif</label>
+    <select id="contexteSelect"></select>
+
+    <div class="card" style="margin-bottom:24px;">
+      <strong id="progLabel">Avancement : …</strong>
+      <div class="bar"><i id="progBar"></i></div>
+      <span class="hint" id="progDetail"></span>
+    </div>
+
+    <div class="filters"><button type="button" class="btn" id="tabRisk">Recommandées pour tes risques</button>
+      <button type="button" class="btn btn-ghost" id="tabAll">Toutes les mesures (93)</button></div>
+    <div id="viewRisk"></div>
+    <div id="viewAll" style="display:none">
+    <div class="soa-grid">
+      <div class="card">
+        <div class="filters">
+          <input id="fSearch" placeholder="Rechercher (code ou intitulé)">
+          <select id="fTheme"><option value="">Tous les thèmes</option></select>
+          <select id="fStatut">
+            <option value="">Tous les statuts</option>
+            <option value="todo">Non évalué</option>
+            <option value="oui">Applicable</option>
+            <option value="non">Non applicable</option>
+          </select>
+          <button type="button" class="btn btn-ghost" id="btnCsv">Exporter en CSV</button>
+        </div>
+        <div class="list">
+          <table>
+            <thead><tr><th>Code</th><th>Mesure</th><th>Statut</th></tr></thead>
+            <tbody id="ctrlTable"><tr><td colspan="3" class="hint">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="editor">
+        <h2 id="edTitle">Choisis une mesure</h2>
+        <p class="hint" id="edExpl">Clique sur une ligne de la liste pour renseigner la SoA.</p>
+        <form id="soaForm" style="display:none;">
+          <label for="eApp">Applicabilité</label>
+          <select id="eApp">
+            <option value="">Non évalué</option>
+            <option value="true">Applicable</option>
+            <option value="false">Non applicable (justification obligatoire)</option>
+          </select>
+
+          <label for="eJust">Justification</label>
+          <textarea id="eJust" rows="3" placeholder="Pourquoi cette mesure est retenue ou exclue"></textarea>
+
+          <label for="eEtat">État de mise en œuvre</label>
+          <select id="eEtat">
+            <option value="non_evalue">Non évalué</option>
+            <option value="non_commence">Non commencé</option>
+            <option value="partiel">Partiel</option>
+            <option value="en_place">En place</option>
+          </select>
+
+          <label for="eEcart">Écart constaté</label>
+          <textarea id="eEcart" rows="2"></textarea>
+
+          <label for="eResp">Responsable</label>
+          <input id="eResp">
+
+          <label for="ePreuve">Preuve ou référence</label>
+          <input id="ePreuve" placeholder="ex : procédure sauvegarde v2, capture du 12/10">
+
+          <button type="submit" class="btn">Enregistrer la mesure</button>
+          <div id="soaMsg"></div>
+
+          <h2 style="margin-top:24px;">Risques couverts par cette mesure</h2>
+          <p class="hint">Coche les risques du contexte que cette mesure permet de traiter.</p>
+          <div id="riskLinks"></div>
+        </form>
+      </div>
+    </div>
+
+    </div>
+    <div class="card" style="margin-top:24px;">
+      <h2>Besoin d'aide pour décider ?</h2>
+      <p class="hint">Pose une question sur un risque ou une mesure. L'aide ne cite que les 93 mesures de la liste, ne remplit rien à ta place, et ses réponses sont à vérifier.</p>
+      <div class="filters"><select id="aideRisque"></select><select id="aideMesure"></select></div>
+      <div class="filters">
+        <button type="button" class="btn btn-ghost" onclick="chip(this)">Cette mesure s'applique-t-elle à ce risque ? Sinon, pourquoi ?</button>
+        <button type="button" class="btn btn-ghost" onclick="chip(this)">Pourquoi cette mesure est-elle suggérée ?</button>
+        <button type="button" class="btn btn-ghost" onclick="chip(this)">Quelle autre mesure pourrait convenir ?</button>
+      </div>
+      <textarea id="aideQ" rows="2" placeholder="Ta question"></textarea>
+      <button type="button" class="btn" id="btnAide" onclick="demanderAide()">Poser la question</button>
+      <div id="aideOut" style="margin-top:12px; font-size:13.5px;"></div>
+    </div>
+    <div class="page-nav">
+      <a href="traitements.html">← Traitements</a>
+      <a href="rapports.html" class="next">Rapports →</a>
+    </div>
+  </div>
+</main>
+
+<script src="assets/supabase-config.js"></script>
+<script src="assets/auth-guard.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const natural = (a, b) => a.localeCompare(b, undefined, {numeric:true});
+  const THEMES = {organisationnel:'Mesures organisationnelles', personnes:'Mesures liées aux personnes', physique:'Mesures physiques', technologique:'Mesures technologiques'};
+  const ETAT = {non_evalue:'Non évalué', non_commence:'Non commencé', partiel:'Partiel', en_place:'En place'};
+  let riskLinks = {}, trCodes = {}, trSet = new Set(), actifsCtx = [], openChoice = null;
+  let ctxId = null, controls = [], entries = {}, risks = [], links = new Set(), selId = null;
+
+  async function init(){
+    const { data, error } = await supabaseClient.from('iso_controls').select('id, code, theme, intitule, explication').order('code');
+    if (error){ $('ctrlTable').innerHTML = `<tr><td colspan="3" class="err">Erreur : ${esc(error.message)}</td></tr>`; return; }
+    controls = data.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
+    $('fTheme').innerHTML += Object.entries(THEMES).map(([k,v]) => `<option value="${k}">${v}</option>`).join('');
+    await loadContextes();
+  }
+
+  async function loadContextes(){
+    const sel = $('contexteSelect');
+    const { data, error } = await supabaseClient.from('contexte').select('id, nom_organisation').order('created_at', {ascending:false});
+    if (error){ sel.innerHTML = `<option>Erreur : ${esc(error.message)}</option>`; return; }
+    if (!data || !data.length){ sel.innerHTML = `<option>Aucun contexte</option>`; return; }
+    sel.innerHTML = data.map(c => `<option value="${c.id}">${esc(c.nom_organisation)}</option>`).join('');
+    const s = getSelectedContexteId();
+    ctxId = (s && data.some(c => c.id === s)) ? s : data[0].id;
+    sel.value = ctxId;
+    sel.addEventListener('change', e => { ctxId = e.target.value; setSelectedContexteId(ctxId); selId = null; refresh(); });
+    refresh();
+  }
+
+  async function refresh(){
+    const [e, r] = await Promise.all([
+      supabaseClient.from('soa_entries').select('*').eq('contexte_id', ctxId),
+      supabaseClient.from('risques').select('id, score, niveau, actifs(nom, type), menaces(nom), vulnerabilites(nom)').eq('contexte_id', ctxId).order('score', {ascending:false})
+    ]);
+    entries = {}; (e.data || []).forEach(x => entries[x.control_id] = x);
+    risks = r.data || [];
+    actifsCtx = (await supabaseClient.from('actifs').select('id, nom, type').eq('contexte_id', ctxId)).data || [];
+    const ids = risks.map(r => r.id); riskLinks = {}; trCodes = {}; trSet = new Set();
+    if (ids.length){
+      const [l, t] = await Promise.all([
+        supabaseClient.from('risk_controls').select('risque_id, iso_controls(code)').in('risque_id', ids),
+        supabaseClient.from('traitements').select('risque_id, mesure_iso27002').in('risque_id', ids)]);
+      (l.data || []).forEach(x => { if (x.iso_controls) (riskLinks[x.risque_id] = riskLinks[x.risque_id] || []).push(x.iso_controls.code); });
+      (t.data || []).forEach(x => { trSet.add(x.risque_id); trCodes[x.risque_id] = (trCodes[x.risque_id] || []).concat(String(x.mesure_iso27002 || '').match(/A\.\d+\.\d+/g) || []); });
+    }
+    render(); progress(); showEditor(); renderRisk(); remplirAide();
+  }
+
+  function statutOf(c){
+    const e = entries[c.id];
+    if (!e || e.applicable === null) return {k:'todo', t:'Non évalué'};
+    if (e.applicable === false) return {k:'non', t:'Non applicable'};
+    return {k:'oui', t:ETAT[e.etat_mise_en_oeuvre] || 'Applicable'};
+  }
+
+  function render(){
+    const q = $('fSearch').value.trim().toLowerCase(), th = $('fTheme').value, st = $('fStatut').value;
+    const list = controls.filter(c => (!th || c.theme === th) && (!st || statutOf(c).k === st) &&
+      (!q || c.code.toLowerCase().includes(q) || c.intitule.toLowerCase().includes(q)));
+    if (!list.length){ $('ctrlTable').innerHTML = `<tr><td colspan="3" class="hint">Aucune mesure ne correspond aux filtres.</td></tr>`; return; }
+    let html = '', last = '';
+    list.forEach(c => {
+      if (c.theme !== last){ last = c.theme; html += `<tr class="theme-row"><td colspan="3">${THEMES[c.theme] || esc(c.theme)}</td></tr>`; }
+      const s = statutOf(c);
+      html += `<tr data-id="${c.id}" class="${c.id === selId ? 'sel' : ''}" onclick="pick('${c.id}')">
+        <td class="code">${esc(c.code)}</td><td>${esc(c.intitule)}</td>
+        <td><span class="statut ${s.k}">${s.t}</span></td></tr>`;
+    });
+    $('ctrlTable').innerHTML = html;
+  }
+
+  function progress(){
+    const done = controls.filter(c => statutOf(c).k !== 'todo').length;
+    const app = controls.filter(c => statutOf(c).k === 'oui').length;
+    const inPlace = controls.filter(c => entries[c.id]?.applicable && entries[c.id].etat_mise_en_oeuvre === 'en_place').length;
+    const pct = controls.length ? Math.round(done / controls.length * 100) : 0;
+    $('progLabel').textContent = `Avancement : ${done} mesures évaluées sur ${controls.length} (${pct} %)`;
+    $('progBar').style.width = pct + '%';
+    $('progDetail').textContent = `${app} applicables, ${done - app} non applicables, ${inPlace} en place.`;
+  }
+
+  async function pick(id){
+    selId = id; $('aideMesure').value = id; render(); await showEditor();
+  }
+
+  async function showEditor(){
+    const c = controls.find(x => x.id === selId);
+    $('soaForm').style.display = c ? 'block' : 'none';
+    if (!c){ $('edTitle').textContent = 'Choisis une mesure'; $('edExpl').textContent = 'Clique sur une ligne de la liste pour renseigner la SoA.'; return; }
+    const e = entries[c.id] || {};
+    $('edTitle').textContent = `${c.code} — ${c.intitule}`;
+    $('edExpl').textContent = c.explication || '';
+    $('eApp').value = e.applicable === true ? 'true' : e.applicable === false ? 'false' : '';
+    $('eJust').value = e.justification || ''; $('eEtat').value = e.etat_mise_en_oeuvre || 'non_evalue';
+    $('eEcart').value = e.ecart || ''; $('eResp').value = e.responsable || ''; $('ePreuve').value = e.preuve || '';
+    $('soaMsg').textContent = '';
+    links = new Set();
+    const ids = risks.map(r => r.id);
+    if (ids.length){
+      const { data } = await supabaseClient.from('risk_controls').select('risque_id').eq('control_id', c.id).in('risque_id', ids);
+      (data || []).forEach(l => links.add(l.risque_id));
+    }
+    $('riskLinks').innerHTML = risks.length ? risks.map(r => `
+      <label class="risk-link"><input type="checkbox" ${links.has(r.id) ? 'checked' : ''} onchange="toggleLink('${r.id}', this)">
+      <span>[${esc(r.niveau)} — ${r.score}] ${esc(r.actifs?.nom || '?')} / ${esc(r.menaces?.nom || '?')}</span></label>`).join('')
+      : `<p class="hint">Aucun risque dans ce contexte. Ajoute-en dans la page Risques.</p>`;
+  }
+
+  $('soaForm').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const msg = $('soaMsg'), app = $('eApp').value, just = $('eJust').value.trim();
+    if (app === 'false' && !just){ msg.className = 'err'; msg.textContent = '❌ Une mesure non applicable doit être justifiée.'; return; }
+    const payload = {
+      contexte_id: ctxId, control_id: selId,
+      applicable: app === '' ? null : app === 'true',
+      justification: just, etat_mise_en_oeuvre: $('eEtat').value,
+      ecart: $('eEcart').value.trim(), responsable: $('eResp').value.trim(), preuve: $('ePreuve').value.trim(),
+      updated_at: new Date().toISOString()
+    };
+    const { data, error } = await supabaseClient.from('soa_entries').upsert(payload, {onConflict:'contexte_id,control_id'}).select().single();
+    if (error){ msg.className = 'err'; msg.textContent = '❌ ' + error.message; return; }
+    entries[selId] = data; render(); progress();
+    msg.className = 'ok'; msg.textContent = '✅ Mesure enregistrée.';
+  });
+
+  async function toggleLink(riskId, box){
+    const q = supabaseClient.from('risk_controls');
+    const { error } = box.checked
+      ? await q.insert([{risque_id: riskId, control_id: selId}])
+      : await q.delete().eq('risque_id', riskId).eq('control_id', selId);
+    if (error){ box.checked = !box.checked; alert('Erreur : ' + error.message); }
+  }
+
+  $('btnCsv').addEventListener('click', () => {
+    const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [['Code','Thème','Mesure','Applicable','Justification','État','Écart','Responsable','Preuve']];
+    controls.forEach(c => { const e = entries[c.id] || {};
+      rows.push([c.code, c.theme, c.intitule, e.applicable == null ? 'Non évalué' : e.applicable ? 'Oui' : 'Non',
+        e.justification, ETAT[e.etat_mise_en_oeuvre] || '', e.ecart, e.responsable, e.preuve]); });
+    const csv = '\uFEFF' + rows.map(r => r.map(q).join(';')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+    a.download = 'SoA_' + new Date().toISOString().slice(0,10) + '.csv'; a.click();
+  });
+
+  // ---- Suggestions par règles (aucune IA : chaque règle est vérifiable) ----
+  const RULES = [
+    [/acces|autoris|privileg|mot de passe|identifiant|credential|authentif/, ['A.5.15','A.5.18','A.8.2','A.8.3','A.8.5'], "le risque touche à l'accès ou aux identifiants"],
+    [/intercept|ecoute|sniff|telnet|chiffr|en clair|transmission|man-in/, ['A.8.20','A.8.21','A.8.24','A.5.14'], "des données ou identifiants peuvent être interceptés"],
+    [/reseau|vlan|scan|reconnaissance|intrusion|pare-feu|firewall|routeur|switch/, ['A.8.20','A.8.22','A.8.16'], "un équipement ou un flux réseau est concerné"],
+    [/interruption|indisponib|coupure|panne|continuite|sinistre|deni|dos\b|ddos/, ['A.8.13','A.8.14','A.5.29','A.5.30'], "la disponibilité du service est menacée"],
+    [/malware|malveillant|virus|ransomware|rancon|trojan/, ['A.8.7','A.8.8','A.8.19'], "un logiciel malveillant est possible"],
+    [/vulnerab|patch|mise a jour|obsole|configuration|faille/, ['A.8.8','A.8.9','A.8.32'], "une faille ou une mauvaise configuration est en cause"],
+    [/fuite|divulgation|vol de donnee|exfiltration|confidentialite/, ['A.8.12','A.5.12','A.8.3'], "des données peuvent fuiter"],
+    [/phishing|hameconn|ingenierie sociale|sensibilis|erreur humaine|employe|negligence/, ['A.6.3','A.6.8'], "le facteur humain est en cause"],
+    [/physique|incendie|inondation|electri|salle|local|cambriol|vol de materiel/, ['A.7.1','A.7.2','A.7.5','A.7.11'], "une menace physique ou environnementale est en jeu"],
+    [/sauvegarde|backup|perte de donnee/, ['A.8.13'], "la perte de données est possible"],
+    [/fournisseur|prestataire|tiers|sous-traitan|cloud|nuage|hebergeur/, ['A.5.19','A.5.20','A.5.23'], "un tiers ou un service externe est impliqué"],
+    [/journal|trace|logs?\b|audit|detection|surveillance/, ['A.8.15','A.8.16'], "la détection ou la traçabilité est insuffisante"],
+    [/developpement|code source|injection|application web|sql/, ['A.8.25','A.8.26','A.8.28'], "le développement ou l'application est concerné"],
+    [/teletravail|a distance|domicile|nomade/, ['A.6.7','A.8.1'], "le travail à distance est concerné"]
+  ];
+  const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+  function suggest(r){
+    const txt = norm([r.actifs?.nom, r.actifs?.type, r.menaces?.nom, r.vulnerabilites?.nom].join(' '));
+    const out = {};
+    RULES.forEach(([re, codes, why]) => { if (re.test(txt)) codes.forEach(c => { (out[c] = out[c] || []).push(why); }); });
+    (trCodes[r.id] || []).forEach(c => { (out[c] = out[c] || []).unshift('déjà prévue dans ton traitement de ce risque'); });
+    return Object.entries(out).filter(([c]) => controls.some(x => x.code === c))
+      .sort((a, b) => natural(a[0], b[0])).map(([code, why]) => ({ code, raison: why[0] }));
+  }
+
+  function renderRisk(){
+    const box = $('viewRisk');
+    if (!risks.length){ box.innerHTML = resume() + `<div class="card"><p class="hint">Aucun risque dans ce contexte. Ajoute-en dans la page Risques, puis reviens ici.</p></div>`; return; }
+    const retenues = new Set(Object.values(riskLinks).flat()).size;
+    box.innerHTML = resume() + `<p class="hint" style="margin-bottom:14px;">${retenues} mesure(s) retenue(s) pour tes ${risks.length} risque(s). Confirme les suggestions ou choisis toi-même ; les autres mesures se complètent dans l'onglet « Toutes les mesures ».</p>` +
+      risks.map(r => {
+        const lk = (riskLinks[r.id] || []).slice().sort(natural), sg = suggest(r);
+        let body;
+        if (lk.length && openChoice !== r.id){
+          body = `<p class="hint">✅ Mesures retenues : <b class="code">${lk.join(', ')}</b></p><div class="actions"><button type="button" class="btn btn-ghost" onclick="ouvrir('${r.id}')">Modifier</button></div>`;
+        } else if (sg.length && openChoice !== r.id){
+          body = sg.map(s => `<div class="sug"><b class="code">${s.code}</b> ${esc(controls.find(c => c.code === s.code).intitule)}<small>Suggérée car ${esc(s.raison)}.</small></div>`).join('') +
+            `<div class="actions"><button type="button" class="btn" onclick="confirmer('${r.id}')">✓ Confirmer ces ${sg.length} mesures</button>
+             <button type="button" class="btn btn-ghost" onclick="ouvrir('${r.id}')">Non, je choisis moi-même</button></div>`;
+        } else {
+          const cur = new Set(lk.length ? lk : sg.map(s => s.code));
+          body = (sg.length ? '' : `<p class="hint">Aucune suggestion automatique pour ce risque : choisis les mesures adaptées.</p>`) +
+            `<input placeholder="Filtrer la liste" oninput="filtrerPick(this)"><div class="pickbox">` +
+            Object.entries(THEMES).map(([k, v]) => `<h4>${v}</h4>` + controls.filter(c => c.theme === k).map(c =>
+              `<label data-t="${esc(norm(c.code + ' ' + c.intitule))}"><input type="checkbox" class="pick-${r.id}" value="${c.code}" ${cur.has(c.code) ? 'checked' : ''}><span><b class="code">${c.code}</b> ${esc(c.intitule)}</span></label>`).join('')).join('') +
+            `</div><div class="actions"><button type="button" class="btn" onclick="validerChoix('${r.id}')">Valider ma sélection</button>
+             <button type="button" class="btn btn-ghost" onclick="ouvrir(null)">Annuler</button></div>`;
+        }
+        return `<div class="card rcard"><div class="rhead"><span class="statut">${esc(r.niveau)} (${r.score})</span><b>${esc(r.actifs?.nom || '?')} / ${esc(r.menaces?.nom || '?')}</b><button type="button" class="btn btn-ghost" onclick="aideRisque('${r.id}')">❓ Demander à l'IA</button></div>${body}</div>`;
+      }).join('');
+  }
+
+  // ---- Résumé du contexte : seulement ce qui appartient à l'entreprise choisie ----
+  function resume(){
+    const uniq = a => [...new Set(a.filter(Boolean))].map(esc).join(', ') || 'aucun';
+    const sel = $('contexteSelect').selectedOptions[0];
+    const niv = ['Critique','Élevé','Moyen','Faible'].map(n => [n, risks.filter(r => r.niveau === n).length]).filter(x => x[1]).map(x => `${x[1]} ${x[0].toLowerCase()}`).join(', ');
+    const retenues = new Set(Object.values(riskLinks).flat()).size;
+    const l = (k, v) => `<p style="margin:4px 0;font-size:13.5px;"><b>${k} :</b> ${v}</p>`;
+    return `<div class="card rcard"><div class="rhead"><b>${esc(sel ? sel.text : '')}</b></div>
+      <p class="hint">Tout ce qui suit appartient uniquement à cette organisation. Change de contexte pour voir une autre structure.</p>` +
+      l('Actifs (' + actifsCtx.length + ')', uniq(actifsCtx.map(a => a.nom))) +
+      l('Menaces identifiées', uniq(risks.map(r => r.menaces?.nom))) +
+      l('Vulnérabilités', uniq(risks.map(r => r.vulnerabilites?.nom))) +
+      l('Risques (' + risks.length + ')', niv || 'aucun') +
+      l('Risques déjà traités', `${risks.filter(r => trSet.has(r.id)).length} sur ${risks.length}`) +
+      l('Mesures retenues', `${retenues} sur 93`) + `</div>`;
+  }
+  function aideRisque(id){
+    $('aideRisque').value = id; $('aideMesure').value = ''; $('aideQ').focus();
+    $('aideQ').scrollIntoView({behavior:'smooth', block:'center'});
+  }
+
+  function ouvrir(id){ openChoice = id; renderRisk(); }
+  function filtrerPick(inp){ const q = norm(inp.value); inp.parentElement.querySelectorAll('.pickbox label').forEach(l => l.style.display = l.dataset.t.includes(q) ? 'flex' : 'none'); }
+  async function confirmer(rid){ await appliquer(rid, suggest(risks.find(r => r.id === rid)).map(s => s.code)); }
+  async function validerChoix(rid){ await appliquer(rid, [...document.querySelectorAll('.pick-' + rid + ':checked')].map(x => x.value)); }
+
+  async function appliquer(rid, codes){
+    const r = risks.find(x => x.id === rid), ids = codes.map(c => controls.find(x => x.code === c)?.id).filter(Boolean);
+    const note = `Retenue pour traiter le risque : ${r.actifs?.nom || '?'} / ${r.menaces?.nom || '?'}.`;
+    let e = (await supabaseClient.from('risk_controls').delete().eq('risque_id', rid)).error;
+    if (!e && ids.length){
+      e = (await supabaseClient.from('risk_controls').insert(ids.map(id => ({risque_id: rid, control_id: id})))).error
+        || (await supabaseClient.from('soa_entries').upsert(ids.map(id => ({contexte_id: ctxId, control_id: id, applicable: true,
+            etat_mise_en_oeuvre: 'non_commence', justification: note})), {onConflict: 'contexte_id,control_id', ignoreDuplicates: true})).error;
+    }
+    if (e){ alert('Erreur : ' + e.message); return; }
+    openChoice = null; await refresh();
+  }
+
+  function tab(v){
+    $('viewRisk').style.display = v === 'risk' ? 'block' : 'none'; $('viewAll').style.display = v === 'all' ? 'block' : 'none';
+    $('tabRisk').className = 'btn' + (v === 'risk' ? '' : ' btn-ghost'); $('tabAll').className = 'btn' + (v === 'all' ? '' : ' btn-ghost');
+  }
+  $('tabRisk').onclick = () => { tab('risk'); refresh(); };
+  $('tabAll').onclick = () => { tab('all'); refresh(); };
+
+  // ---- Aide : conseils limités aux 93 mesures, réponse contrôlée avant affichage ----
+  function remplirAide(){
+    const r = $('aideRisque'), m = $('aideMesure'), rv = r.value, mv = m.value;
+    r.innerHTML = '<option value="">Aucun risque précis</option>' + risks.map(x => `<option value="${x.id}">${esc(x.actifs?.nom || '?')} / ${esc(x.menaces?.nom || '?')}</option>`).join('');
+    m.innerHTML = '<option value="">Aucune mesure précise</option>' + controls.map(c => `<option value="${c.id}">${c.code} ${esc(c.intitule)}</option>`).join('');
+    r.value = rv; m.value = mv;
+  }
+  function chip(b){ $('aideQ').value = b.textContent; }
+  async function demanderAide(){
+    const q = $('aideQ').value.trim(), out = $('aideOut');
+    if (!q){ out.textContent = '❌ Écris ta question.'; return; }
+    const r = risks.find(x => x.id === $('aideRisque').value), c = controls.find(x => x.id === $('aideMesure').value);
+    out.textContent = '⏳ Réflexion en cours…'; $('btnAide').disabled = true;
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('ai-assistant', { body: { task: 'aide_soa', payload: {
+        question: q,
+        risque: r ? { actif: r.actifs?.nom, type: r.actifs?.type, menace: r.menaces?.nom, vulnerabilite: r.vulnerabilites?.nom, niveau: r.niveau } : null,
+        mesure: c ? { code: c.code, intitule: c.intitule } : null,
+        suggestions: r ? suggest(r).map(s => s.code) : [],
+        catalogue: controls.map(x => x.code + ' ' + x.intitule)
+      }}});
+      if (error){ let m = error.message; try { const b = await error.context.json(); m = b.error || m; } catch (_) {} throw new Error(m); }
+      if (data.error) throw new Error(data.error);
+      const cites = [...(data.codes_cites || []), ...((data.reponse || '').match(/A\.\d+\.\d+/g) || [])];
+      const inconnus = cites.filter(k => !controls.some(x => x.code === k));
+      if (inconnus.length) throw new Error('Réponse écartée : mesure inconnue citée (' + inconnus.join(', ') + '). Reformule ta question.');
+      out.innerHTML = `<p>${esc(data.reponse).replace(/\n/g, '<br>')}</p><p class="hint">Aide automatique, à vérifier : tu restes responsable du choix.</p>`;
+    } catch (e){ out.textContent = '❌ ' + e.message; }
+    $('btnAide').disabled = false;
+  }
+
+  ['fSearch','fTheme','fStatut'].forEach(id => $(id).addEventListener('input', render));
+  init();
+</script>
+</body>
+</html>
