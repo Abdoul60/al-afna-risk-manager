@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager : Connexion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  #msg{font-family:var(--mono); font-size:12.5px; margin-top:12px; min-height:16px;}
+  .ok{color:var(--low);} .err{color:var(--crit);}
+  .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;}
+</style>
+</head>
+<body>
+<header class="nav"><div class="wrap"><div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div></div></header>
+<main>
+  <div class="wrap" style="max-width:480px;">
+    <h1>Connexion</h1>
+    <p class="subtitle">Accède à ton espace. Chaque compte ne voit que ses propres données.</p>
+    <div class="card">
+      <form id="f">
+        <label for="email">Adresse e-mail</label>
+        <input id="email" type="email" required autocomplete="email">
+        <label for="pwd">Mot de passe (6 caractères minimum)</label>
+        <input id="pwd" type="password" minlength="6" required autocomplete="current-password">
+        <div class="row">
+          <button type="submit" class="btn">Se connecter</button>
+          <a class="btn btn-ghost" href="inscription.html">Créer un compte</a>
+        </div>
+        <div id="msg"></div>
+      </form>
+    </div>
+  </div>
+</main>
+<script src="assets/supabase-config.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  function go(){
+    const n = new URLSearchParams(location.search).get('next');
+    location.href = (n && /^[\w\-]+\.html$/.test(n)) ? n : 'index.html';
+  }
+  const say = (t, ok) => { $('msg').className = ok ? 'ok' : 'err'; $('msg').textContent = t; };
+  supabaseClient.auth.getSession().then(({ data }) => { if (data.session) go(); });
+
+  $('f').addEventListener('submit', async e => {
+    e.preventDefault(); say('Connexion en cours…', true);
+    const { error } = await supabaseClient.auth.signInWithPassword({ email: $('email').value.trim(), password: $('pwd').value });
+    if (error) return say('❌ ' + error.message);
+    go();
+  });
+  if (new URLSearchParams(location.search).get('cree')) say('✅ Compte créé. Si on te le demande, confirme ton adresse e-mail, puis connecte-toi.', true);
+</script>
+</body>
+</html>
