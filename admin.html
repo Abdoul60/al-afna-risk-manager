@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager : Administration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin-bottom:24px;}
+  .stat b{display:block; font-family:var(--mono); font-size:28px;}
+  .stat span{font-size:12.5px; color:var(--ink-dim);}
+  .scroll{overflow-x:auto;}
+  td.n{font-family:var(--mono); text-align:right;}
+  #msg{font-family:var(--mono); font-size:13px; margin:12px 0;}
+  .err{color:var(--crit);}
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="wrap">
+    <div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
+    <ul>
+      <li><a href="index.html">Accueil</a></li>
+      <li><a href="soa.html">SoA</a></li>
+      <li><a href="rapports.html">Rapports</a></li>
+      <li><a href="admin.html" class="active">Administration</a></li>
+    </ul>
+  </div>
+</header>
+<main>
+  <div class="wrap">
+    <h1>Tableau de bord administrateur</h1>
+    <p class="subtitle">Vue d'ensemble des comptes inscrits. Seuls des compteurs sont affichés : aucun contenu (actifs, risques, textes) n'est accessible ici.</p>
+    <div id="msg"></div>
+    <div id="content" style="display:none;">
+      <div class="stats" id="stats"></div>
+      <div class="card scroll">
+        <table>
+          <thead><tr><th>E-mail</th><th>Inscrit le</th><th>Dernière connexion</th><th>Contextes</th><th>Actifs</th><th>Risques</th><th>Traitements</th><th>Mesures SoA</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/supabase-config.js"></script>
+<script src="assets/auth-guard.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt = d => d ? new Date(d).toLocaleString('fr-FR', {dateStyle:'short', timeStyle:'short'}) : 'jamais';
+  (async () => {
+    const { data: ok } = await supabaseClient.rpc('is_admin');
+    if (!ok){ $('msg').className = 'err'; $('msg').textContent = 'Accès réservé à l\'administrateur.'; return; }
+    const { data, error } = await supabaseClient.rpc('admin_stats');
+    if (error){ $('msg').className = 'err'; $('msg').textContent = '❌ ' + error.message; return; }
+    const sum = k => data.reduce((a, r) => a + Number(r[k]), 0);
+    const cards = [
+      [data.length, 'comptes inscrits'],
+      [data.filter(r => Number(r.nb_contextes) > 0).length, 'comptes ayant créé un contexte'],
+      [sum('nb_risques'), 'risques saisis'],
+      [sum('nb_mesures_soa'), 'mesures évaluées dans la SoA']
+    ];
+    $('stats').innerHTML = cards.map(c => `<div class="card stat"><b>${c[0]}</b><span>${c[1]}</span></div>`).join('');
+    $('rows').innerHTML = data.map(r => `<tr><td>${esc(r.email)}</td><td>${fmt(r.cree_le)}</td><td>${fmt(r.derniere_connexion)}</td>
+      <td class="n">${r.nb_contextes}</td><td class="n">${r.nb_actifs}</td><td class="n">${r.nb_risques}</td><td class="n">${r.nb_traitements}</td><td class="n">${r.nb_mesures_soa}</td></tr>`).join('');
+    $('content').style.display = 'block';
+  })();
+</script>
+</body>
+</html>
