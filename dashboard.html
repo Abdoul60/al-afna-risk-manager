@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager : Tableau de bord GRC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/t_cyber.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/context-helper.js"></script>
+<style>
+  select#contexteSelect{margin-bottom:20px;}
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-bottom:22px;}
+  .kpi{background:var(--bg-raised); border:1px solid var(--line); border-left:5px solid var(--line); border-radius:10px; padding:14px 16px; cursor:pointer; transition:transform .12s, border-color .12s; position:relative; min-height:140px;}
+  .kpi:hover{transform:translateY(-2px);} .kpi.sel{outline:2px solid var(--ink-dim);}
+  .kpi.ok{border-left-color:var(--low);} .kpi.warn{border-left-color:var(--high);} .kpi.bad{border-left-color:var(--crit);}
+  .kt{font-size:12.5px; color:var(--ink-dim); margin-bottom:8px; padding-right:26px;}
+  .kv{font-family:var(--mono); font-size:30px; font-weight:600; line-height:1.1;}
+  .ks{font-size:12px; color:var(--ink-dim); margin-top:4px; padding-bottom:36px;}
+  .info{position:absolute; top:8px; right:8px; background:transparent; border:1px solid var(--line); color:var(--ink-dim); border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:13px; padding:0;}
+  .ring{position:absolute; right:14px; bottom:12px;}
+  .brow{display:flex; align-items:center; gap:8px; font-size:12.5px; margin:5px 0; cursor:pointer; border-radius:5px; padding:1px 3px;}
+  .brow:hover{background:rgba(255,255,255,0.06);} .brow.sel{background:rgba(255,255,255,0.10);}
+  .brow span.l{width:78px; flex:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .brow .tr{flex:1; height:9px; background:var(--line); border-radius:5px; overflow:hidden;}
+  .brow .tr i{display:block; height:100%; border-radius:5px;} .brow b{font-family:var(--mono); width:22px; text-align:right;}
+  .niv{font-family:var(--mono); font-size:11px; padding:3px 8px; border-radius:5px; font-weight:600;}
+  .niv.Critique{background:rgba(229,72,77,0.15); color:var(--crit);} .niv.Élevé{background:rgba(240,166,58,0.15); color:var(--high);}
+  .niv.Moyen{background:rgba(232,197,71,0.15); color:var(--med);} .niv.Faible{background:rgba(63,178,127,0.15); color:var(--low);}
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px;}
+  .fiche{border:1px dashed var(--line); border-radius:8px; padding:12px 14px; margin-top:14px; font-size:13.5px; display:none;}
+  .fiche p{margin:5px 0;} .hint{font-size:12.5px; color:var(--ink-dim);} .scroll{overflow-x:auto;}
+
+  /* Fix responsive : la grille des KPI doit passer à 1 colonne sur mobile */
+  @media (max-width: 600px){
+    .kpis{ grid-template-columns:1fr; }
+    .kpi{ min-height:120px; padding-bottom:52px; }
+    .ring{ right:12px; bottom:10px; width:40px; height:40px; }
+    .kv{ font-size:26px; }
+    .scroll > table{ min-width:520px; }
+  }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="wrap">
+    <div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
+    <ul>
+      <li><a href="index.html">Accueil</a></li>
+      <li><a href="actifs.html">Actifs</a></li>
+      <li><a href="menaces.html">Menaces</a></li>
+      <li><a href="risques.html">Risques</a></li>
+      <li><a href="traitements.html">Traitements</a></li>
+      <li><a href="soa.html">SoA</a></li>
+      <li><a href="dashboard.html" class="active">Tableau de bord</a></li>
+      <li><a href="rapports.html">Rapports</a></li>
+    </ul>
+  </div>
+</header>
+<main>
+  <div class="wrap">
+    <h1>Tableau de bord GRC</h1>
+    <p class="subtitle">Huit indicateurs calculés en direct sur l'organisation choisie. Clique sur un indicateur pour voir le détail, sur « i » pour sa fiche (formule, source, seuils).</p>
+    <label for="contexteSelect">Contexte d'évaluation actif</label>
+    <select id="contexteSelect"></select>
+    <div id="vide" class="hint"></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="card">
+      <div class="toolbar"><h2 id="dTitre" style="margin:0;flex:1;"></h2>
+        <button type="button" class="btn btn-ghost" id="btnCsv">Exporter les fiches (CSV)</button></div>
+      <div class="scroll"><table><thead id="dHead"></thead><tbody id="dBody"></tbody></table></div>
+      <div class="fiche" id="fiche"></div>
+    </div>
+    <div class="page-nav">
+      <a href="soa.html">← SoA</a>
+      <a href="rapports.html" class="next">Rapport →</a>
+    </div>
+  </div>
+  
+</main>
+<script src="assets/supabase-config.js"></script>
+<script src="assets/auth-guard.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const NIV = ['Critique','Élevé','Moyen','Faible'], NCOL = {Critique:'var(--crit)', 'Élevé':'var(--high)', Moyen:'var(--med)', Faible:'var(--low)'};
+  const ETAT = {non_evalue:'Non évalué', non_commence:'Non commencé', partiel:'Partiel', en_place:'En place'};
+  let ctxId = null, R = [], A = [], S = [], trait = new Set(), links = new Set(), NC = 93, K = {}, sel = {k:'k2'};
+
+  const FICHES = {
+    k1:{n:'Répartition des risques par niveau', f:'Nombre de risques par niveau (Critique, Élevé, Moyen, Faible)', s:'Table risques (niveau issu de vraisemblance x impact)', t:'Informatif, sans seuil'},
+    k2:{n:'Risques critiques ou élevés non traités', f:'Nombre de risques de niveau Critique ou Élevé sans traitement enregistré', s:'Tables risques et traitements', t:'0 = vert, 1 à 2 = orange, 3 et plus = rouge'},
+    k3:{n:'Taux de risques traités', f:'Risques ayant au moins un traitement / total des risques x 100', s:'Tables risques et traitements', t:'80 % et plus = vert, 50 à 79 % = orange, moins de 50 % = rouge'},
+    k4:{n:'Mesures de l\'Annexe A évaluées', f:'Mesures évaluées (applicable ou non) / 93 x 100', s:'Tables soa_entries et iso_controls', t:'80 % et plus = vert, 50 à 79 % = orange, moins de 50 % = rouge'},
+    k5:{n:'Taux de mise en œuvre', f:'Mesures applicables à l\'état « En place » / mesures applicables x 100', s:'Table soa_entries', t:'70 % et plus = vert, 40 à 69 % = orange, moins de 40 % = rouge'},
+    k6:{n:'Écart de mise en œuvre', f:'Mesures applicables non évaluées ou non commencées / mesures applicables x 100', s:'Table soa_entries', t:'20 % ou moins = vert, 21 à 50 % = orange, plus de 50 % = rouge'},
+    k7:{n:'Risques sans mesure associée', f:'Risques sans lien vers une mesure de l\'Annexe A / total des risques x 100', s:'Tables risques et risk_controls', t:'0 % = vert, jusqu\'à 30 % = orange, plus de 30 % = rouge'},
+    k8:{n:'Actifs les plus exposés', f:'Actifs classés par nombre de risques associés (puis score maximal)', s:'Table risques (actif lié)', t:'Informatif, sans seuil'}
+  };
+  const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+  const hi = (v, g, o) => v >= g ? 'ok' : v >= o ? 'warn' : 'bad';
+  const lo = (v, g, o) => v <= g ? 'ok' : v <= o ? 'warn' : 'bad';
+
+  async function loadContextes(){
+    const s = $('contexteSelect');
+    const { data, error } = await supabaseClient.from('contexte').select('id, nom_organisation').order('created_at', {ascending:false});
+    if (error || !data || !data.length){ s.innerHTML = '<option>Aucun contexte</option>'; $('vide').textContent = error ? error.message : 'Crée d\'abord un contexte.'; return; }
+    s.innerHTML = data.map(c => `<option value="${c.id}">${esc(c.nom_organisation)}</option>`).join('');
+    const g = getSelectedContexteId(); ctxId = (g && data.some(c => c.id === g)) ? g : data[0].id; s.value = ctxId;
+    s.addEventListener('change', e => { ctxId = e.target.value; setSelectedContexteId(ctxId); load(); });
+    load();
+  }
+
+  async function load(){
+    const q = (t, c) => supabaseClient.from(t).select(c).eq('contexte_id', ctxId);
+    const [r, a, s, c] = await Promise.all([
+      q('risques', 'id, score, niveau, actifs(id, nom), menaces(nom), vulnerabilites(nom)'),
+      q('actifs', 'id, nom'),
+      q('soa_entries', 'applicable, etat_mise_en_oeuvre, iso_controls(code, intitule)'),
+      supabaseClient.from('iso_controls').select('id', {count:'exact', head:true})
+    ]);
+    R = r.data || []; A = a.data || []; S = (s.data || []).filter(x => x.iso_controls); NC = c.count || 93;
+    trait = new Set(); links = new Set(); const ids = R.map(x => x.id);
+    if (ids.length){
+      const [t, l] = await Promise.all([
+        supabaseClient.from('traitements').select('risque_id').in('risque_id', ids),
+        supabaseClient.from('risk_controls').select('risque_id').in('risque_id', ids)
+      ]);
+      trait = new Set((t.data || []).map(x => x.risque_id));
+      links = new Set((l.data || []).map(x => x.risque_id));
+    }
+    $('vide').textContent = R.length ? '' : 'Aucun risque dans ce contexte : les indicateurs se rempliront quand tu en auras saisi (page Risques).';
+    compute(); render();
+  }
+
+  function compute(){
+    const T = r => trait.has(r.id), app = S.filter(e => e.applicable === true), ev = S.filter(e => e.applicable !== null);
+    const crit = R.filter(r => ['Critique','Élevé'].includes(r.niveau));
+    const ecart = app.filter(e => ['non_evalue','non_commence'].includes(e.etat_mise_en_oeuvre));
+    const place = app.filter(e => e.etat_mise_en_oeuvre === 'en_place'), sans = R.filter(r => !links.has(r.id));
+    const ex = {}; R.forEach(r => { const n = r.actifs?.nom || '?'; (ex[n] = ex[n] || {n, c:0, max:0}); ex[n].c++; ex[n].max = Math.max(ex[n].max, r.score || 0); });
+    K = { R, app, ev, ecart, place, sans, crit, T,
+      niv: NIV.map(n => [n, R.filter(r => r.niveau === n).length]),
+      nonTraitesCrit: crit.filter(r => !T(r)), pTrait: pct(R.filter(T).length, R.length), pEval: pct(ev.length, NC),
+      tMo: pct(place.length, app.length), pEcart: pct(ecart.length, app.length), pSans: pct(sans.length, R.length),
+      expo: Object.values(ex).sort((a, b) => b.c - a.c || b.max - a.max).slice(0, 5) };
+  }
+
+  const ring = (p, col) => `<svg class="ring" width="48" height="48" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="var(--line)" stroke-width="4"/>
+    <circle cx="18" cy="18" r="15" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${p * 0.9425} 94.25" transform="rotate(-90 18 18)"/></svg>`;
+  const SC = {ok:'var(--low)', warn:'var(--high)', bad:'var(--crit)'};
+
+  function card(k, v, sub, st, p){
+    return `<div class="kpi ${st || ''} ${sel.k === k && !sel.v ? 'sel' : ''}" onclick="pick('${k}')" title="${esc(FICHES[k].f)}">
+      <button type="button" class="info" onclick="event.stopPropagation();fiche('${k}')" title="Fiche de l'indicateur">i</button>
+      <div class="kt">${FICHES[k].n}</div><div class="kv">${v}</div><div class="ks">${sub}</div>${p != null ? ring(p, SC[st] || 'var(--ink-dim)') : ''}</div>`;
+  }
+
+  function render(){
+    const mx = Math.max(...K.niv.map(x => x[1]), 1), me = Math.max(...K.expo.map(x => x.c), 1);
+    const c1 = `<div class="kpi ${sel.k === 'k1' ? 'sel' : ''}"><button type="button" class="info" onclick="fiche('k1')">i</button><div class="kt">${FICHES.k1.n}</div>` +
+      K.niv.map(([n, c]) => `<div class="brow ${sel.k === 'k1' && sel.v === n ? 'sel' : ''}" onclick="pick('k1','${n}')"><span class="l">${n}</span><div class="tr"><i style="width:${c / mx * 100}%;background:${NCOL[n]}"></i></div><b>${c}</b></div>`).join('') + '</div>';
+    const c8 = `<div class="kpi ${sel.k === 'k8' ? 'sel' : ''}"><button type="button" class="info" onclick="fiche('k8')">i</button><div class="kt">${FICHES.k8.n}</div>` +
+      (K.expo.length ? K.expo.map(x => `<div class="brow ${sel.k === 'k8' && sel.v === x.n ? 'sel' : ''}" onclick="pick('k8',this.dataset.n)" data-n="${esc(x.n)}"><span class="l" title="${esc(x.n)}">${esc(x.n)}</span><div class="tr"><i style="width:${x.c / me * 100}%;background:var(--high)"></i></div><b>${x.c}</b></div>`).join('') : '<div class="ks">Aucun risque</div>') + '</div>';
+    const n2 = K.nonTraitesCrit.length, a = K.app.length;
+    $('kpis').innerHTML = c1 +
+      card('k2', n2, `sur ${K.crit.length} risque(s) critique(s) ou élevé(s)`, K.R.length ? lo(n2, 0, 2) : '') +
+      card('k3', K.pTrait + ' %', `${K.R.filter(K.T).length} sur ${K.R.length} risques traités`, K.R.length ? hi(K.pTrait, 80, 50) : '', K.pTrait) +
+      card('k4', K.pEval + ' %', `${K.ev.length} sur ${NC} mesures évaluées`, hi(K.pEval, 80, 50), K.pEval) +
+      card('k5', K.tMo + ' %', `${K.place.length} en place sur ${a} applicable(s)`, a ? hi(K.tMo, 70, 40) : '', K.tMo) +
+      card('k6', K.pEcart + ' %', `${K.ecart.length} applicable(s) non commencée(s)`, a ? lo(K.pEcart, 20, 50) : '', K.pEcart) +
+      card('k7', K.pSans + ' %', `${K.sans.length} risque(s) sans mesure`, K.R.length ? lo(K.pSans, 0, 30) : '', K.pSans) + c8;
+    detail();
+  }
+
+  function pick(k, v){ sel = {k, v}; render(); $('fiche').style.display = 'none'; $('dTitre').scrollIntoView({behavior:'smooth', block:'nearest'}); }
+  function fiche(k){ const f = FICHES[k], b = $('fiche');
+    b.innerHTML = `<p><b>${f.n}</b></p><p><b>Formule :</b> ${esc(f.f)}</p><p><b>Source :</b> ${esc(f.s)}</p><p><b>Seuils :</b> ${esc(f.t)}</p>`;
+    b.style.display = 'block'; }
+
+  function detail(){
+    const rk = list => ({cols:['Actif','Menace','Score','Niveau','Traité'], rows:list.map(r => [esc(r.actifs?.nom), esc(r.menaces?.nom), r.score, `<span class="niv ${r.niveau}">${esc(r.niveau)}</span>`, K.T(r) ? 'Oui' : 'Non'])});
+    const ms = (list) => ({cols:['Code','Mesure','Applicable','État'], rows:list.map(e => [esc(e.iso_controls.code), esc(e.iso_controls.intitule), e.applicable === null ? '-' : e.applicable ? 'Oui' : 'Non', esc(ETAT[e.etat_mise_en_oeuvre] || '')])});
+    const k = sel.k; let t, d;
+    if (k === 'k1'){ t = sel.v ? `Risques de niveau ${sel.v}` : 'Tous les risques'; d = rk(K.R.filter(r => !sel.v || r.niveau === sel.v)); }
+    else if (k === 'k2'){ t = 'Risques critiques ou élevés non traités'; d = rk(K.nonTraitesCrit); }
+    else if (k === 'k3'){ t = 'Risques : traités et à traiter'; d = rk([...K.R].sort((a, b) => K.T(a) - K.T(b) || b.score - a.score)); }
+    else if (k === 'k4'){ t = 'Mesures évaluées'; d = ms(K.ev); }
+    else if (k === 'k5'){ t = 'Mesures applicables'; d = ms(K.app); }
+    else if (k === 'k6'){ t = 'Mesures applicables non commencées'; d = ms(K.ecart); }
+    else if (k === 'k7'){ t = 'Risques sans mesure associée'; d = rk(K.sans); }
+    else { t = sel.v ? `Risques sur l'actif « ${sel.v} »` : 'Risques par actif'; d = rk(K.R.filter(r => !sel.v || r.actifs?.nom === sel.v)); }
+    $('dTitre').textContent = `${t} (${d.rows.length})`;
+    $('dHead').innerHTML = '<tr>' + d.cols.map(c => `<th>${c}</th>`).join('') + '</tr>';
+    $('dBody').innerHTML = d.rows.length ? d.rows.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('') : `<tr><td colspan="${d.cols.length}" class="hint">Rien à signaler pour cet indicateur.</td></tr>`;
+  }
+
+  $('btnCsv').addEventListener('click', () => {
+    const vals = {k1:K.niv.map(x => x[0] + ' : ' + x[1]).join(' ; '), k2:K.nonTraitesCrit.length, k3:K.pTrait + ' %', k4:K.pEval + ' %', k5:K.tMo + ' %', k6:K.pEcart + ' %', k7:K.pSans + ' %', k8:K.expo.map(x => x.n + ' : ' + x.c).join(' ; ')};
+    const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [['Indicateur','Valeur','Formule','Source','Seuils'], ...Object.keys(FICHES).map(k => [FICHES[k].n, vals[k], FICHES[k].f, FICHES[k].s, FICHES[k].t])];
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\uFEFF' + rows.map(r => r.map(q).join(';')).join('\n')], {type:'text/csv;charset=utf-8'}));
+    a.download = 'Indicateurs_GRC_' + new Date().toISOString().slice(0, 10) + '.csv'; a.click();
+  });
+  loadContextes();
+</script>
+<script src="assets/t_cyber.js"></script>
+</body>
+</html>
