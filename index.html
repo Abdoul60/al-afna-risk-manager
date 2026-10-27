@@ -1,208 +1,300 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AL-AFNA Risk Manager : Mes entreprises</title>
+<title>AL-AFNA Risk Manager — Identifiez vos risques, choisissez les bonnes protections</title>
+<meta name="description" content="Plateforme GRC inspirée d'ISO/IEC 27005 pour les PME d'Afrique francophone. Analysez vos risques, choisissez vos mesures, suivez votre progression.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/t_cyber.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  .status{display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12.5px; padding:7px 12px; border-radius:6px; border:1px solid var(--line); margin-bottom:28px;}
-  .status.ok{color:var(--low); border-color:var(--low);}
-  .status.err{color:var(--crit); border-color:var(--crit);}
-  .status.pending{color:var(--ink-dim);}
-  #formMsg{font-family:var(--mono); font-size:12.5px; margin-top:8px; min-height:16px;}
-  #formMsg.ok{color:var(--low);} #formMsg.err{color:var(--crit);}
-  .table-wrap{overflow-x:auto;}
-  .empty-state{ text-align:center; padding:40px 20px; color:var(--ink-dim); font-size:14px; }
-  .row-actions-group{display:flex; gap:6px; flex-wrap:wrap;}
-  .row-open, .row-dash, .row-edit, .row-delete{
-    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
-    padding:6px 10px; border-radius:5px; cursor:pointer; font-size:12px; font-family:var(--body);
-  }
-  .row-open, .row-dash{color:var(--ink); font-weight:600;}
-  .row-open:hover, .row-dash:hover, .row-edit:hover{border-color:var(--teal); color:var(--teal);}
-  .row-delete:hover{border-color:var(--crit); color:var(--crit);}
-</style>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="landing.css">
 </head>
-<body>
+<body class="lp">
 
-<header class="nav">
-  <div class="wrap">
-    <div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
-    <ul>
-      <li><a href="index.html" class="active">Mes entreprises</a></li>
-      <li><a href="actifs.html">Actifs</a></li>
-      <li><a href="menaces.html">Menaces</a></li>
-      <li><a href="risques.html">Risques</a></li>
-      <li><a href="traitements.html">Traitements</a></li>
-      <li><a href="soa.html">SoA</a></li>
-      <li><a href="dashboard.html">Tableau de bord</a></li>
-      <li><a href="rapports.html">Rapports</a></li>
-    </ul>
+<div class="lp-scanline" aria-hidden="true"></div>
+
+<!-- ══════════ NAV ══════════ -->
+<header class="lp-nav">
+  <div class="lp-wrap">
+    <a href="#" class="lp-brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</a>
+    <nav class="lp-nav-links" aria-label="Navigation principale">
+      <a href="#lp-fonctionnement">Fonctionnement</a>
+      <a href="#lp-fonctionnalites">Fonctionnalités</a>
+      <a href="#lp-ia">IA</a>
+      <a href="#lp-guide">Guide</a>
+      <a href="login.html">Connexion</a>
+    </nav>
+    <div class="lp-nav-actions">
+      <a href="inscription.html" class="lp-btn lp-btn--primary">Commencer →</a>
+      <button class="lp-theme-toggle" type="button" aria-label="Changer de thème" id="lpThemeBtn">
+        <span class="lp-ic-sun">☀</span>
+        <span class="lp-ic-moon">☾</span>
+      </button>
+    </div>
   </div>
 </header>
 
-<main>
-  <div class="wrap">
-    <h1>Mes entreprises</h1>
-    <p class="subtitle">Créez une entreprise à évaluer et reprenez vos évaluations. Le suivi des indicateurs se trouve dans le Tableau de bord.</p>
+<main class="lp-main">
 
-    <div id="status" class="status pending">⏳ Vérification de la connexion…</div>
-
-    <div class="card">
-      <h2>Nouvelle entreprise à évaluer</h2>
-      <p style="margin-bottom:16px;">Commencez toujours par ici : renseignez l'entreprise étudiée avant d'ajouter des actifs.</p>
-      <form id="contexteForm">
-        <label for="nomOrg">Nom de l'entreprise</label>
-        <input id="nomOrg" placeholder="ex : AfriTech SARL" required>
-
-        <label for="perimetre">Périmètre évalué</label>
-        <input id="perimetre" placeholder="ex : Réseau du siège social">
-
-        <label for="objectifs">Objectifs de l'évaluation</label>
-        <textarea id="objectifs" rows="2" placeholder="ex : Identifier les risques prioritaires avant la certification"></textarea>
-
-        <button type="submit" class="btn">Créer et commencer →</button>
-        <div id="formMsg"></div>
-      </form>
+<!-- ══════════ HERO ══════════ -->
+<section class="lp-hero">
+  <div class="lp-wrap lp-hero-grid">
+    <div class="lp-hero-copy">
+      <div class="lp-eyebrow">Cybersécurité &amp; GRC</div>
+      <h1 class="lp-h1">Identifiez vos risques.<br><em>Choisissez les bonnes protections.</em></h1>
+      <p class="lp-lead">
+        AL-AFNA Risk Manager guide votre PME à travers une analyse de risques inspirée d'ISO/IEC 27005 de la cartographie des actifs jusqu'au rapport d'audit, avec un assistant IA transparent et toujours sous votre contrôle.
+      </p>
+      <div class="lp-cta-row">
+        <a href="inscription.html" class="lp-btn lp-btn--primary">Créer mon compte →</a>
+        <a href="#lp-guide" class="lp-btn lp-btn--ghost">📖 Lire le guide</a>
+      </div>
+      <div class="lp-badges">
+        <span>ISO/IEC 27005</span>
+        <span>ISO/IEC 27001:2022</span>
+        <span>ISO/IEC 27002:2022</span>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Entreprises déjà évaluées</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Entreprise</th><th>Actifs</th><th>Risques</th><th>Traitements</th><th>Créée le</th><th></th></tr>
-          </thead>
-          <tbody id="contextesTable">
-            <tr><td colspan="6" style="color:var(--ink-dim)">Chargement…</td></tr>
-          </tbody>
-        </table>
+    <div class="lp-hero-visual">
+      <div class="lp-mockup">
+        <div class="lp-mockup-bar"><i></i><i></i><i></i></div>
+        <div class="lp-mockup-title">MATRICE DE RISQUE : AFRITECH SARL</div>
+        <div class="lp-mockup-matrix" id="lpMockMatrix"></div>
+        <div class="lp-mockup-stat"><span>Score moyen</span><b>11,4</b></div>
+        <div class="lp-mockup-stat"><span>Risques critiques</span><b>3</b></div>
+        <div class="lp-mockup-stat"><span>Mesures retenues</span><b>12 / 93</b></div>
       </div>
     </div>
   </div>
+</section>
+
+<!-- ══════════ 8 ÉTAPES ══════════ -->
+<section class="lp-section lp-section--alt" id="lp-fonctionnement">
+  <div class="lp-wrap">
+    <div class="lp-section-head lp-section-head--center lp-reveal">
+      <div class="lp-eyebrow">Le parcours en un coup d'œil</div>
+      <h2 class="lp-h2">8 étapes claires, <span>de l'actif au rapport</span></h2>
+      <p>Suivez les pages dans l'ordre du menu. Chaque étape s'appuie sur la précédente et vous fait avancer vers un rapport prêt à présenter.</p>
+    </div>
+    <div class="lp-steps lp-reveal">
+      <div class="lp-step">
+        <div class="lp-step-num">01</div>
+        <h3>Accueil</h3>
+        <p>Créer l'entreprise à évaluer : nom, périmètre, objectifs.</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">02</div>
+        <h3>Actifs</h3>
+        <p>Lister ce qui a de la valeur et noter sa criticité (C-I-D).</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">03<span class="lp-step-ia">IA</span></div>
+        <h3>Menaces</h3>
+        <p>Décrire ce qui peut arriver et les faiblesses de chaque actif.</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">04</div>
+        <h3>Risques</h3>
+        <p>Croiser actif, menace et faiblesse. Mesurer la gravité.</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">05<span class="lp-step-ia">IA</span></div>
+        <h3>Traitements</h3>
+        <p>Décider quoi faire : modifier, éviter, transférer, accepter.</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">06<span class="lp-step-ia">IA</span></div>
+        <h3>SoA</h3>
+        <p>Choisir les protections de l'Annexe A et suivre leur mise en œuvre.</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">07</div>
+        <h3>Tableau de bord</h3>
+        <p>Suivre 8 indicateurs calculés en direct.</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">08<span class="lp-step-ia">IA</span></div>
+        <h3>Rapports</h3>
+        <p>Télécharger le rapport d'audit en PDF, Word ou Excel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ FONCTIONNALITÉS ══════════ -->
+<section class="lp-section" id="lp-fonctionnalites">
+  <div class="lp-wrap">
+    <div class="lp-section-head lp-reveal">
+      <div class="lp-eyebrow">Ce que vous obtenez</div>
+      <h2 class="lp-h2">Tout le cycle GRC, <span>sans complexité inutile</span></h2>
+      <p>Un outil pensé pour les PME : pas de jargon, pas de formation de 3 jours, pas de coût de mise en œuvre démesuré.</p>
+    </div>
+    <div class="lp-features lp-reveal">
+      <div class="lp-feature">
+        <div class="lp-feature-ic">◆</div>
+        <h3>Analyse automatique</h3>
+        <p>Le score de risque (vraisemblance × impact) est calculé automatiquement à l'enregistrement. Aucune feuille de calcul.</p>
+      </div>
+      <div class="lp-feature">
+        <div class="lp-feature-ic">◈</div>
+        <h3>93 mesures ISO 27001</h3>
+        <p>La déclaration d'applicabilité complète de l'Annexe A, avec justification, écart, responsable et preuve.</p>
+      </div>
+      <div class="lp-feature">
+        <div class="lp-feature-ic">◇</div>
+        <h3>Assistant IA transparent</h3>
+        <p>Suggestion de menace, de mesure et de synthèse. Toujours à vérifier, jamais décisionnaire.</p>
+      </div>
+      <div class="lp-feature">
+        <div class="lp-feature-ic">▣</div>
+        <h3>Rapports prêts à présenter</h3>
+        <p>Rapport d'audit et plan de traitement exportés en PDF, Word ou Excel, à votre nom.</p>
+      </div>
+      <div class="lp-feature">
+        <div class="lp-feature-ic">▤</div>
+        <h3>Tableau de bord en direct</h3>
+        <p>8 indicateurs, seuils couleur, fiches détaillées avec formule et source. Export CSV inclus.</p>
+      </div>
+      <div class="lp-feature">
+        <div class="lp-feature-ic">▥</div>
+        <h3>Isolation des comptes</h3>
+        <p>Chaque compte ne voit que ses propres entreprises, actifs et risques. Vos données restent privées.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ TÉLÉCHARGEMENT GUIDE ══════════ -->
+<section class="lp-section lp-section--alt" id="lp-guide">
+  <div class="lp-wrap lp-download">
+    <div class="lp-pdf-preview lp-reveal">
+      <div class="lp-pdf-cover">
+        <div class="lp-pdf-shield">
+          <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M40 6 L68 18 V42 C68 58 56 68 40 74 C24 68 12 58 12 42 V18 Z"
+                  stroke="#5EEAD4" stroke-width="3" fill="rgba(45,212,191,0.1)"/>
+            <path d="M26 40 L36 50 L54 30"
+                  stroke="#5EEAD4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="lp-pdf-label">Guide officiel</div>
+        <div class="lp-pdf-title">AL-AFNA<br>Risk Manager</div>
+        <div class="lp-pdf-sub">Identifiez vos risques.<br>Choisissez les bonnes protections.</div>
+        <div class="lp-pdf-meta">
+          <span>Version 1.0</span>
+          <span>Octobre 2026</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="lp-download-copy lp-reveal lp-delay-2">
+      <div class="lp-eyebrow">Avant de commencer</div>
+      <h2 class="lp-h2">Lisez le guide, <span>puis lancez-vous</span></h2>
+      <p>Le guide d'utilisation vous accompagne pas à pas : démarrage rapide en 10 minutes, page par page, rôle exact de l'IA, vocabulaire et bonnes pratiques de confidentialité.</p>
+      <ul class="lp-download-list">
+        <li>Démarrage rapide en 10 minutes avec l'exemple AfriTech SARL</li>
+        <li>Explication détaillée des 8 pages, une par une</li>
+        <li>Règles de l'IA : ce qu'elle fait, ce qu'elle ne fait pas</li>
+        <li>Glossaire des 15 termes clés (actif, menace, SoA…)</li>
+        <li>Bonnes pratiques de confidentialité et de validation</li>
+      </ul>
+      <div class="lp-download-btns">
+        <a href="assets/Guide_utilisation_AL-AFNA_Risk_Manager.pdf"
+           class="lp-btn lp-btn--primary" download>
+          ⬇ Télécharger le guide PDF
+        </a>
+        <a href="assets/Guide_utilisation_AL-AFNA_Risk_Manager.pdf"
+           class="lp-btn lp-btn--ghost" target="_blank" rel="noopener">
+          👁 Lire en ligne
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ IA ══════════ -->
+<section class="lp-section" id="lp-ia">
+  <div class="lp-wrap">
+    <div class="lp-section-head lp-section-head--center lp-reveal">
+      <div class="lp-eyebrow">Rôle de l'IA</div>
+      <h2 class="lp-h2">Un assistant, <span>jamais un décideur</span></h2>
+      <p>L'IA intervient à quatre endroits précis. Partout ailleurs, ce sont des règles écrites et vérifiables — ou votre jugement — qui décident.</p>
+    </div>
+    <div class="lp-ia-grid lp-reveal">
+      <div class="lp-ia-card">
+        <span class="lp-ia-tag">Intervient</span>
+        <h3>4 usages ciblés</h3>
+        <ul>
+          <li><b>Menaces</b> — proposer une menace plausible pour un actif</li>
+          <li><b>Traitements</b> — proposer une option et une mesure</li>
+          <li><b>SoA</b> — répondre à vos questions sur une mesure</li>
+          <li><b>Rapports</b> — rédiger une synthèse managériale</li>
+        </ul>
+      </div>
+      <div class="lp-ia-card">
+        <span class="lp-ia-tag">S'arrête</span>
+        <h3>4 garde-fous</h3>
+        <ul>
+          <li>Rien n'est enregistré sans votre clic</li>
+          <li>Elle ne cite que les 93 mesures officielles</li>
+          <li>Toute réponse hors cadre est écartée</li>
+          <li>Les données envoyées ne doivent pas être confidentielles</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ CTA FINAL ══════════ -->
+<section class="lp-cta-final">
+  <div class="lp-wrap">
+    <h2 class="lp-h2">Prêt à cartographier <span>vos risques</span> ?</h2>
+    <p>Créez votre compte, ajoutez votre première entreprise, et obtenez un rapport d'audit en moins de 15 minutes.</p>
+    <div class="lp-cta-row lp-cta-row--center">
+      <a href="inscription.html" class="lp-btn lp-btn--primary">Créer mon compte gratuitement →</a>
+      <a href="login.html" class="lp-btn lp-btn--ghost">J'ai déjà un compte</a>
+    </div>
+  </div>
+</section>
+
 </main>
 
-<script src="assets/context-helper.js"></script>
-<script src="assets/supabase-config.js"></script>
-<script src="assets/auth-guard.js"></script>
-<script>
-  const $ = id => document.getElementById(id);
-  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+<!-- ══════════ FOOTER ══════════ -->
+<footer class="lp-footer">
+  <div class="lp-wrap">
+    <div class="lp-footer-grid">
+      <div class="lp-footer-brand">
+        <div class="lp-brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
+        <p>Le pôle cybersécurité &amp; technologie du groupe AL-AFNA. Rendre la gestion des risques numériques accessible aux organisations d'Afrique francophone.</p>
+      </div>
+      <div class="lp-footer-col">
+        <h4>Plateforme</h4>
+        <ul>
+          <li><a href="#lp-fonctionnement">Fonctionnement</a></li>
+          <li><a href="#lp-fonctionnalites">Fonctionnalités</a></li>
+          <li><a href="#lp-ia">Rôle de l'IA</a></li>
+          <li><a href="#lp-guide">Guide PDF</a></li>
+        </ul>
+      </div>
+      <div class="lp-footer-col">
+        <h4>Accès</h4>
+        <ul>
+          <li><a href="inscription.html">Créer un compte</a></li>
+          <li><a href="login.html">Connexion</a></li>
+          <li><a href="rapports.html">Rapports</a></li>
+          <li><a href="admin.html">Administration</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="lp-footer-bottom">
+      <span>AL-AFNA TECH — UN PÔLE D'AL-AFNA GROUPE</span>
+      <span>NIAMEY, NIGER · © 2026</span>
+    </div>
+  </div>
+</footer>
 
-  async function testConnectionAndLoad(){
-    const statusEl = $('status');
-    try {
-      const { error } = await supabaseClient.from('contexte').select('id').limit(1);
-      if (error) throw error;
-      statusEl.className = 'status ok';
-      statusEl.textContent = '✅ Connecté à la base de données.';
-      loadContextesOverview();
-    } catch (e) {
-      statusEl.className = 'status err';
-      statusEl.textContent = '❌ Connexion échouée (' + e.message + ')';
-      $('contextesTable').innerHTML = `<tr><td colspan="6" style="color:var(--crit)">Impossible de charger : connexion échouée.</td></tr>`;
-    }
-  }
-
-  async function loadContextesOverview(){
-    const tbody = $('contextesTable');
-    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--ink-dim)">Chargement…</td></tr>`;
-
-    const { data: contextes, error } = await supabaseClient.from('contexte').select('*').order('created_at', { ascending:false });
-    if (error){ tbody.innerHTML = `<tr><td colspan="6" style="color:var(--crit)">Erreur : ${esc(error.message)}</td></tr>`; return; }
-    if (!contextes || contextes.length === 0){
-      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Aucune entreprise enregistrée pour l'instant : créez-en une ci-dessus.</div></td></tr>`;
-      return;
-    }
-
-    const rows = await Promise.all(contextes.map(async (c) => {
-      const { count: nbActifs } = await supabaseClient.from('actifs').select('id', { count:'exact', head:true }).eq('contexte_id', c.id);
-      const { data: risquesIds } = await supabaseClient.from('risques').select('id').eq('contexte_id', c.id);
-      const ids = (risquesIds || []).map(r => r.id);
-      let nbTrait = 0;
-      if (ids.length){
-        const { count } = await supabaseClient.from('traitements').select('id', { count:'exact', head:true }).in('risque_id', ids);
-        nbTrait = count || 0;
-      }
-      return { c, nbActifs: nbActifs || 0, nbRisques: ids.length, nbTrait };
-    }));
-
-    tbody.innerHTML = rows.map(({c, nbActifs, nbRisques, nbTrait}) => `
-      <tr>
-        <td><b>${esc(c.nom_organisation)}</b>${c.perimetre ? '<br><span style="color:var(--ink-dim); font-size:12px;">' + esc(c.perimetre) + '</span>' : ''}</td>
-        <td>${nbActifs}</td>
-        <td>${nbRisques}</td>
-        <td>${nbTrait}</td>
-        <td style="font-family:var(--mono); font-size:12px; color:var(--ink-dim);">${new Date(c.created_at).toLocaleDateString('fr-FR')}</td>
-        <td class="row-actions-group">
-          <button class="row-open" data-act="open" data-id="${esc(c.id)}">Ouvrir →</button>
-          <button class="row-dash" data-act="dash" data-id="${esc(c.id)}">Tableau de bord</button>
-          <button class="row-edit" data-act="edit" data-id="${esc(c.id)}" data-nom="${esc(c.nom_organisation)}" data-per="${esc(c.perimetre)}">Modifier</button>
-          <button class="row-delete" data-act="del" data-id="${esc(c.id)}" data-nom="${esc(c.nom_organisation)}">Supprimer</button>
-        </td>
-      </tr>
-    `).join('');
-  }
-
-  // Les boutons du tableau passent par un seul écouteur (aucun texte saisi n'est injecté dans du code)
-  $('contextesTable').addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-act]');
-    if (!b) return;
-    const { act, id, nom, per } = b.dataset;
-    if (act === 'open') ouvrirContexte(id, 'actifs.html');
-    else if (act === 'dash') ouvrirContexte(id, 'dashboard.html');
-    else if (act === 'edit') modifierContexte(id, nom, per);
-    else if (act === 'del') supprimerContexte(id, nom);
-  });
-
-  async function modifierContexte(id, nomActuel, perimetreActuel){
-    const nouveauNom = prompt('Nom de l\'entreprise :', nomActuel);
-    if (nouveauNom === null || !nouveauNom.trim()) return;
-    const nouveauPerimetre = prompt('Périmètre évalué :', perimetreActuel);
-    const { error } = await supabaseClient.from('contexte')
-      .update({ nom_organisation: nouveauNom.trim(), perimetre: (nouveauPerimetre || '').trim() })
-      .eq('id', id);
-    if (error){ alert('Erreur : ' + error.message); return; }
-    loadContextesOverview();
-  }
-
-  async function supprimerContexte(id, nom){
-    const confirmation = confirm(
-      `Supprimer "${nom}" ?\n\nCela supprime aussi TOUS ses actifs, risques et traitements associés. Cette action est irréversible.`
-    );
-    if (!confirmation) return;
-    const { error } = await supabaseClient.from('contexte').delete().eq('id', id);
-    if (error){ alert('Erreur : ' + error.message); return; }
-    if (getSelectedContexteId() === id) clearSelectedContexteId();
-    loadContextesOverview();
-  }
-
-  function ouvrirContexte(id, page){
-    setSelectedContexteId(id);
-    window.location.href = page;
-  }
-
-  $('contexteForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const msg = $('formMsg');
-    const payload = {
-      nom_organisation: $('nomOrg').value.trim(),
-      perimetre: $('perimetre').value.trim(),
-      objectifs: $('objectifs').value.trim(),
-    };
-    const { data, error } = await supabaseClient.from('contexte').insert([payload]).select();
-    if (error){ msg.className = 'err'; msg.textContent = '❌ ' + error.message; return; }
-    msg.className = 'ok'; msg.textContent = '✅ Entreprise créée, redirection…';
-    setSelectedContexteId(data[0].id);
-    setTimeout(() => { window.location.href = 'actifs.html'; }, 600);
-  });
-
-  testConnectionAndLoad();
-</script>
-<script src="assets/t_cyber.js"></script>
+<script src="landing.js" defer></script>
 </body>
 </html>

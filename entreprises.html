@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager : Mes entreprises</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/t_cyber.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  .status{display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12.5px; padding:7px 12px; border-radius:6px; border:1px solid var(--line); margin-bottom:28px;}
+  .status.ok{color:var(--low); border-color:var(--low);}
+  .status.err{color:var(--crit); border-color:var(--crit);}
+  .status.pending{color:var(--ink-dim);}
+  #formMsg{font-family:var(--mono); font-size:12.5px; margin-top:8px; min-height:16px;}
+  #formMsg.ok{color:var(--low);} #formMsg.err{color:var(--crit);}
+  .table-wrap{overflow-x:auto;}
+  .empty-state{ text-align:center; padding:40px 20px; color:var(--ink-dim); font-size:14px; }
+  .row-actions-group{display:flex; gap:6px; flex-wrap:wrap;}
+  .row-open, .row-dash, .row-edit, .row-delete{
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    padding:6px 10px; border-radius:5px; cursor:pointer; font-size:12px; font-family:var(--body);
+  }
+  .row-open, .row-dash{color:var(--ink); font-weight:600;}
+  .row-open:hover, .row-dash:hover, .row-edit:hover{border-color:var(--teal); color:var(--teal);}
+  .row-delete:hover{border-color:var(--crit); color:var(--crit);}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
+    <ul>
+      <li><a href="index.html" class="active">Mes entreprises</a></li>
+      <li><a href="actifs.html">Actifs</a></li>
+      <li><a href="menaces.html">Menaces</a></li>
+      <li><a href="risques.html">Risques</a></li>
+      <li><a href="traitements.html">Traitements</a></li>
+      <li><a href="soa.html">SoA</a></li>
+      <li><a href="dashboard.html">Tableau de bord</a></li>
+      <li><a href="rapports.html">Rapports</a></li>
+    </ul>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Mes entreprises</h1>
+    <p class="subtitle">Créez une entreprise à évaluer et reprenez vos évaluations. Le suivi des indicateurs se trouve dans le Tableau de bord.</p>
+
+    <div id="status" class="status pending">⏳ Vérification de la connexion…</div>
+
+    <div class="card">
+      <h2>Nouvelle entreprise à évaluer</h2>
+      <p style="margin-bottom:16px;">Commencez toujours par ici : renseignez l'entreprise étudiée avant d'ajouter des actifs.</p>
+      <form id="contexteForm">
+        <label for="nomOrg">Nom de l'entreprise</label>
+        <input id="nomOrg" placeholder="ex : AfriTech SARL" required>
+
+        <label for="perimetre">Périmètre évalué</label>
+        <input id="perimetre" placeholder="ex : Réseau du siège social">
+
+        <label for="objectifs">Objectifs de l'évaluation</label>
+        <textarea id="objectifs" rows="2" placeholder="ex : Identifier les risques prioritaires avant la certification"></textarea>
+
+        <button type="submit" class="btn">Créer et commencer →</button>
+        <div id="formMsg"></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Entreprises déjà évaluées</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Entreprise</th><th>Actifs</th><th>Risques</th><th>Traitements</th><th>Créée le</th><th></th></tr>
+          </thead>
+          <tbody id="contextesTable">
+            <tr><td colspan="6" style="color:var(--ink-dim)">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="assets/context-helper.js"></script>
+<script src="assets/supabase-config.js"></script>
+<script src="assets/auth-guard.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  async function testConnectionAndLoad(){
+    const statusEl = $('status');
+    try {
+      const { error } = await supabaseClient.from('contexte').select('id').limit(1);
+      if (error) throw error;
+      statusEl.className = 'status ok';
+      statusEl.textContent = '✅ Connecté à la base de données.';
+      loadContextesOverview();
+    } catch (e) {
+      statusEl.className = 'status err';
+      statusEl.textContent = '❌ Connexion échouée (' + e.message + ')';
+      $('contextesTable').innerHTML = `<tr><td colspan="6" style="color:var(--crit)">Impossible de charger : connexion échouée.</td></tr>`;
+    }
+  }
+
+  async function loadContextesOverview(){
+    const tbody = $('contextesTable');
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--ink-dim)">Chargement…</td></tr>`;
+
+    const { data: contextes, error } = await supabaseClient.from('contexte').select('*').order('created_at', { ascending:false });
+    if (error){ tbody.innerHTML = `<tr><td colspan="6" style="color:var(--crit)">Erreur : ${esc(error.message)}</td></tr>`; return; }
+    if (!contextes || contextes.length === 0){
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Aucune entreprise enregistrée pour l'instant : créez-en une ci-dessus.</div></td></tr>`;
+      return;
+    }
+
+    const rows = await Promise.all(contextes.map(async (c) => {
+      const { count: nbActifs } = await supabaseClient.from('actifs').select('id', { count:'exact', head:true }).eq('contexte_id', c.id);
+      const { data: risquesIds } = await supabaseClient.from('risques').select('id').eq('contexte_id', c.id);
+      const ids = (risquesIds || []).map(r => r.id);
+      let nbTrait = 0;
+      if (ids.length){
+        const { count } = await supabaseClient.from('traitements').select('id', { count:'exact', head:true }).in('risque_id', ids);
+        nbTrait = count || 0;
+      }
+      return { c, nbActifs: nbActifs || 0, nbRisques: ids.length, nbTrait };
+    }));
+
+    tbody.innerHTML = rows.map(({c, nbActifs, nbRisques, nbTrait}) => `
+      <tr>
+        <td><b>${esc(c.nom_organisation)}</b>${c.perimetre ? '<br><span style="color:var(--ink-dim); font-size:12px;">' + esc(c.perimetre) + '</span>' : ''}</td>
+        <td>${nbActifs}</td>
+        <td>${nbRisques}</td>
+        <td>${nbTrait}</td>
+        <td style="font-family:var(--mono); font-size:12px; color:var(--ink-dim);">${new Date(c.created_at).toLocaleDateString('fr-FR')}</td>
+        <td class="row-actions-group">
+          <button class="row-open" data-act="open" data-id="${esc(c.id)}">Ouvrir →</button>
+          <button class="row-dash" data-act="dash" data-id="${esc(c.id)}">Tableau de bord</button>
+          <button class="row-edit" data-act="edit" data-id="${esc(c.id)}" data-nom="${esc(c.nom_organisation)}" data-per="${esc(c.perimetre)}">Modifier</button>
+          <button class="row-delete" data-act="del" data-id="${esc(c.id)}" data-nom="${esc(c.nom_organisation)}">Supprimer</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // Les boutons du tableau passent par un seul écouteur (aucun texte saisi n'est injecté dans du code)
+  $('contextesTable').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    const { act, id, nom, per } = b.dataset;
+    if (act === 'open') ouvrirContexte(id, 'actifs.html');
+    else if (act === 'dash') ouvrirContexte(id, 'dashboard.html');
+    else if (act === 'edit') modifierContexte(id, nom, per);
+    else if (act === 'del') supprimerContexte(id, nom);
+  });
+
+  async function modifierContexte(id, nomActuel, perimetreActuel){
+    const nouveauNom = prompt('Nom de l\'entreprise :', nomActuel);
+    if (nouveauNom === null || !nouveauNom.trim()) return;
+    const nouveauPerimetre = prompt('Périmètre évalué :', perimetreActuel);
+    const { error } = await supabaseClient.from('contexte')
+      .update({ nom_organisation: nouveauNom.trim(), perimetre: (nouveauPerimetre || '').trim() })
+      .eq('id', id);
+    if (error){ alert('Erreur : ' + error.message); return; }
+    loadContextesOverview();
+  }
+
+  async function supprimerContexte(id, nom){
+    const confirmation = confirm(
+      `Supprimer "${nom}" ?\n\nCela supprime aussi TOUS ses actifs, risques et traitements associés. Cette action est irréversible.`
+    );
+    if (!confirmation) return;
+    const { error } = await supabaseClient.from('contexte').delete().eq('id', id);
+    if (error){ alert('Erreur : ' + error.message); return; }
+    if (getSelectedContexteId() === id) clearSelectedContexteId();
+    loadContextesOverview();
+  }
+
+  function ouvrirContexte(id, page){
+    setSelectedContexteId(id);
+    window.location.href = page;
+  }
+
+  $('contexteForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('formMsg');
+    const payload = {
+      nom_organisation: $('nomOrg').value.trim(),
+      perimetre: $('perimetre').value.trim(),
+      objectifs: $('objectifs').value.trim(),
+    };
+    const { data, error } = await supabaseClient.from('contexte').insert([payload]).select();
+    if (error){ msg.className = 'err'; msg.textContent = '❌ ' + error.message; return; }
+    msg.className = 'ok'; msg.textContent = '✅ Entreprise créée, redirection…';
+    setSelectedContexteId(data[0].id);
+    setTimeout(() => { window.location.href = 'actifs.html'; }, 600);
+  });
+
+  testConnectionAndLoad();
+</script>
+<script src="assets/t_cyber.js"></script>
+</body>
+</html>
