@@ -6,7 +6,7 @@
 <title>AL-AFNA Risk Manager : Administration</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/t_cyber.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin-bottom:24px;}
@@ -23,8 +23,13 @@
   <div class="wrap">
     <div class="brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
     <ul>
-      <li><a href="index.html">Accueil</a></li>
+      <li><a href="index.html">Mes entreprises</a></li>
+      <li><a href="actifs.html">Actifs</a></li>
+      <li><a href="menaces.html">Menaces</a></li>
+      <li><a href="risques.html">Risques</a></li>
+      <li><a href="traitements.html">Traitements</a></li>
       <li><a href="soa.html">SoA</a></li>
+      <li><a href="dashboard.html">Tableau de bord</a></li>
       <li><a href="rapports.html">Rapports</a></li>
       <li><a href="admin.html" class="active">Administration</a></li>
     </ul>
@@ -70,5 +75,6 @@
     $('content').style.display = 'block';
   })();
 </script>
+<script src="assets/t_cyber.js"></script>
 </body>
 </html>
