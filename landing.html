@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AL-AFNA Risk Manager — Identifiez vos risques, choisissez les bonnes protections</title>
+<meta name="description" content="Plateforme GRC inspirée d'ISO/IEC 27005 pour les PME d'Afrique francophone. Analysez vos risques, choisissez vos mesures, suivez votre progression.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="landing.css">
+</head>
+<body class="lp">
+
+<div class="lp-scanline" aria-hidden="true"></div>
+
+<!-- ══════════ NAV ══════════ -->
+<header class="lp-nav">
+  <div class="lp-wrap">
+    <a href="#" class="lp-brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</a>
+    <nav class="lp-nav-links" aria-label="Navigation principale">
+      <a href="#lp-fonctionnement">Fonctionnement</a>
+      <a href="#lp-fonctionnalites">Fonctionnalités</a>
+      <a href="#lp-ia">IA</a>
+      <a href="#lp-guide">Guide</a>
+      <a href="login.html">Connexion</a>
+    </nav>
+    <div class="lp-nav-actions">
+      <a href="inscription.html" class="lp-btn lp-btn--primary">Commencer →</a>
+      <button class="lp-theme-toggle" type="button" aria-label="Changer de thème" id="lpThemeBtn">
+        <span class="lp-ic-sun">☀</span>
+        <span class="lp-ic-moon">☾</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="lp-main">
+
+<!-- ══════════ HERO ══════════ -->
+<section class="lp-hero">
+  <div class="lp-wrap lp-hero-grid">
+    <div class="lp-hero-copy">
+      <div class="lp-eyebrow">Cybersécurité &amp; GRC</div>
+      <h1 class="lp-h1">Identifiez vos risques.<br><em>Choisissez les bonnes protections.</em></h1>
+      <p class="lp-lead">
+        AL-AFNA Risk Manager guide votre PME à travers une analyse de risques inspirée d'ISO/IEC 27005 de la cartographie des actifs jusqu'au rapport d'audit, avec un assistant IA transparent et toujours sous votre contrôle.
+      </p>
+      <div class="lp-cta-row">
+        <a href="inscription.html" class="lp-btn lp-btn--primary">Créer mon compte →</a>
+        <a href="#lp-guide" class="lp-btn lp-btn--ghost">📖 Lire le guide</a>
+      </div>
+      <div class="lp-badges">
+        <span>ISO/IEC 27005</span>
+        <span>ISO/IEC 27001:2022</span>
+        <span>ISO/IEC 27002:2022</span>
+      </div>
+    </div>
+
+    <div class="lp-hero-visual">
+      <div class="lp-mockup">
+        <div class="lp-mockup-bar"><i></i><i></i><i></i></div>
+        <div class="lp-mockup-title">MATRICE DE RISQUE : AFRITECH SARL</div>
+        <div class="lp-mockup-matrix" id="lpMockMatrix"></div>
+        <div class="lp-mockup-stat"><span>Score moyen</span><b>11,4</b></div>
+        <div class="lp-mockup-stat"><span>Risques critiques</span><b>3</b></div>
+        <div class="lp-mockup-stat"><span>Mesures retenues</span><b>12 / 93</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 8 ÉTAPES ══════════ -->
+<section class="lp-section lp-section--alt" id="lp-fonctionnement">
+  <div class="lp-wrap">
+    <div class="lp-section-head lp-section-head--center lp-reveal">
+      <div class="lp-eyebrow">Le parcours en un coup d'œil</div>
+      <h2 class="lp-h2">8 étapes claires, <span>de l'actif au rapport</span></h2>
+      <p>Suivez les pages dans l'ordre du menu. Chaque étape s'appuie sur la précédente et vous fait avancer vers un rapport prêt à présenter.</p>
+    </div>
+    <div class="lp-steps lp-reveal">
+      <div class="lp-step">
+        <div class="lp-step-num">01</div>
+        <h3>Accueil</h3>
+        <p>Créer l'entreprise à évaluer : nom, périmètre, objectifs.</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">02</div>
+        <h3>Actifs</h3>
+        <p>Lister ce qui a de la valeur et noter sa criticité (C-I-D).</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">03<span class="lp-step-ia">IA</span></div>
+        <h3>Menaces</h3>
+        <p>Décrire ce qui peut arriver et les faiblesses de chaque actif.</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">04</div>
+        <h3>Risques</h3>
+        <p>Croiser actif, menace et faiblesse. Mesurer la gravité.</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">05<span class="lp-step-ia">IA</span></div>
+        <h3>Traitements</h3>
+        <p>Décider quoi faire : modifier, éviter, transférer, accepter.</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">06<span class="lp-step-ia">IA</span></div>
+        <h3>SoA</h3>
+        <p>Choisir les protections de l'Annexe A et suivre leur mise en œuvre.</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">07</div>
+        <h3>Tableau de bord</h3>
+        <p>Suivre 8 indicateurs calculés en direct.</p>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step-num">08<span class="lp-step-ia">IA</span></div>
+        <h3>Rapports</h3>
+        <p>Télécharger le rapport d'audit en PDF, Word ou Excel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ FONCTIONNALITÉS ══════════ -->
+<section class="lp-section" id="lp-fonctionnalites">
+  <div class="lp-wrap">
+    <div class="lp-section-head lp-reveal">
+      <div class="lp-eyebrow">Ce que vous obtenez</div>
+      <h2 class="lp-h2">Tout le cycle GRC, <span>sans complexité inutile</span></h2>
+      <p>Un outil pensé pour les PME : pas de jargon, pas de formation de 3 jours, pas de coût de mise en œuvre démesuré.</p>
+    </div>
+    <div class="lp-features lp-reveal">
+      <div class="lp-feature">
+        <div class="lp-feature-ic">◆</div>
+        <h3>Analyse automatique</h3>
+        <p>Le score de risque (vraisemblance × impact) est calculé automatiquement à l'enregistrement. Aucune feuille de calcul.</p>
+      </div>
+      <div class="lp-feature">
+        <div class="lp-feature-ic">◈</div>
+        <h3>93 mesures ISO 27001</h3>
+        <p>La déclaration d'applicabilité complète de l'Annexe A, avec justification, écart, responsable et preuve.</p>
+      </div>
+      <div class="lp-feature">
+        <div class="lp-feature-ic">◇</div>
+        <h3>Assistant IA transparent</h3>
+        <p>Suggestion de menace, de mesure et de synthèse. Toujours à vérifier, jamais décisionnaire.</p>
+      </div>
+      <div class="lp-feature">
+        <div class="lp-feature-ic">▣</div>
+        <h3>Rapports prêts à présenter</h3>
+        <p>Rapport d'audit et plan de traitement exportés en PDF, Word ou Excel, à votre nom.</p>
+      </div>
+      <div class="lp-feature">
+        <div class="lp-feature-ic">▤</div>
+        <h3>Tableau de bord en direct</h3>
+        <p>8 indicateurs, seuils couleur, fiches détaillées avec formule et source. Export CSV inclus.</p>
+      </div>
+      <div class="lp-feature">
+        <div class="lp-feature-ic">▥</div>
+        <h3>Isolation des comptes</h3>
+        <p>Chaque compte ne voit que ses propres entreprises, actifs et risques. Vos données restent privées.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ TÉLÉCHARGEMENT GUIDE ══════════ -->
+<section class="lp-section lp-section--alt" id="lp-guide">
+  <div class="lp-wrap lp-download">
+    <div class="lp-pdf-preview lp-reveal">
+      <div class="lp-pdf-cover">
+        <div class="lp-pdf-shield">
+          <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M40 6 L68 18 V42 C68 58 56 68 40 74 C24 68 12 58 12 42 V18 Z"
+                  stroke="#5EEAD4" stroke-width="3" fill="rgba(45,212,191,0.1)"/>
+            <path d="M26 40 L36 50 L54 30"
+                  stroke="#5EEAD4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="lp-pdf-label">Guide officiel</div>
+        <div class="lp-pdf-title">AL-AFNA<br>Risk Manager</div>
+        <div class="lp-pdf-sub">Identifiez vos risques.<br>Choisissez les bonnes protections.</div>
+        <div class="lp-pdf-meta">
+          <span>Version 1.0</span>
+          <span>Octobre 2026</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="lp-download-copy lp-reveal lp-delay-2">
+      <div class="lp-eyebrow">Avant de commencer</div>
+      <h2 class="lp-h2">Lisez le guide, <span>puis lancez-vous</span></h2>
+      <p>Le guide d'utilisation vous accompagne pas à pas : démarrage rapide en 10 minutes, page par page, rôle exact de l'IA, vocabulaire et bonnes pratiques de confidentialité.</p>
+      <ul class="lp-download-list">
+        <li>Démarrage rapide en 10 minutes avec l'exemple AfriTech SARL</li>
+        <li>Explication détaillée des 8 pages, une par une</li>
+        <li>Règles de l'IA : ce qu'elle fait, ce qu'elle ne fait pas</li>
+        <li>Glossaire des 15 termes clés (actif, menace, SoA…)</li>
+        <li>Bonnes pratiques de confidentialité et de validation</li>
+      </ul>
+      <div class="lp-download-btns">
+        <a href="assets/Guide_utilisation_AL-AFNA_Risk_Manager.pdf"
+           class="lp-btn lp-btn--primary" download>
+          ⬇ Télécharger le guide PDF
+        </a>
+        <a href="assets/Guide_utilisation_AL-AFNA_Risk_Manager.pdf"
+           class="lp-btn lp-btn--ghost" target="_blank" rel="noopener">
+          👁 Lire en ligne
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ IA ══════════ -->
+<section class="lp-section" id="lp-ia">
+  <div class="lp-wrap">
+    <div class="lp-section-head lp-section-head--center lp-reveal">
+      <div class="lp-eyebrow">Rôle de l'IA</div>
+      <h2 class="lp-h2">Un assistant, <span>jamais un décideur</span></h2>
+      <p>L'IA intervient à quatre endroits précis. Partout ailleurs, ce sont des règles écrites et vérifiables — ou votre jugement — qui décident.</p>
+    </div>
+    <div class="lp-ia-grid lp-reveal">
+      <div class="lp-ia-card">
+        <span class="lp-ia-tag">Intervient</span>
+        <h3>4 usages ciblés</h3>
+        <ul>
+          <li><b>Menaces</b> — proposer une menace plausible pour un actif</li>
+          <li><b>Traitements</b> — proposer une option et une mesure</li>
+          <li><b>SoA</b> — répondre à vos questions sur une mesure</li>
+          <li><b>Rapports</b> — rédiger une synthèse managériale</li>
+        </ul>
+      </div>
+      <div class="lp-ia-card">
+        <span class="lp-ia-tag">S'arrête</span>
+        <h3>4 garde-fous</h3>
+        <ul>
+          <li>Rien n'est enregistré sans votre clic</li>
+          <li>Elle ne cite que les 93 mesures officielles</li>
+          <li>Toute réponse hors cadre est écartée</li>
+          <li>Les données envoyées ne doivent pas être confidentielles</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ CTA FINAL ══════════ -->
+<section class="lp-cta-final">
+  <div class="lp-wrap">
+    <h2 class="lp-h2">Prêt à cartographier <span>vos risques</span> ?</h2>
+    <p>Créez votre compte, ajoutez votre première entreprise, et obtenez un rapport d'audit en moins de 15 minutes.</p>
+    <div class="lp-cta-row lp-cta-row--center">
+      <a href="inscription.html" class="lp-btn lp-btn--primary">Créer mon compte gratuitement →</a>
+      <a href="login.html" class="lp-btn lp-btn--ghost">J'ai déjà un compte</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ══════════ FOOTER ══════════ -->
+<footer class="lp-footer">
+  <div class="lp-wrap">
+    <div class="lp-footer-grid">
+      <div class="lp-footer-brand">
+        <div class="lp-brand"><b>&#9670;</b> AL-AFNA RISK MANAGER</div>
+        <p>Le pôle cybersécurité &amp; technologie du groupe AL-AFNA. Rendre la gestion des risques numériques accessible aux organisations d'Afrique francophone.</p>
+      </div>
+      <div class="lp-footer-col">
+        <h4>Plateforme</h4>
+        <ul>
+          <li><a href="#lp-fonctionnement">Fonctionnement</a></li>
+          <li><a href="#lp-fonctionnalites">Fonctionnalités</a></li>
+          <li><a href="#lp-ia">Rôle de l'IA</a></li>
+          <li><a href="#lp-guide">Guide PDF</a></li>
+        </ul>
+      </div>
+      <div class="lp-footer-col">
+        <h4>Accès</h4>
+        <ul>
+          <li><a href="inscription.html">Créer un compte</a></li>
+          <li><a href="login.html">Connexion</a></li>
+          <li><a href="rapports.html">Rapports</a></li>
+          <li><a href="admin.html">Administration</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="lp-footer-bottom">
+      <span>AL-AFNA TECH — UN PÔLE D'AL-AFNA GROUPE</span>
+      <span>NIAMEY, NIGER · © 2026</span>
+    </div>
+  </div>
+</footer>
+
+<script src="landing.js" defer></script>
+</body>
+</html>
