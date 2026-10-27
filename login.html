@@ -40,7 +40,7 @@
   const $ = id => document.getElementById(id);
   function go(){
     const n = new URLSearchParams(location.search).get('next');
-    location.href = (n && /^[\w\-]+\.html$/.test(n)) ? n : 'index.html';
+    location.href = (n && /^[\w\-]+\.html$/.test(n) && n !== 'index.html') ? n : 'entreprises.html';
   }
   const say = (t, ok) => { $('msg').className = ok ? 'ok' : 'err'; $('msg').textContent = t; };
   supabaseClient.auth.getSession().then(({ data }) => { if (data.session) go(); });
