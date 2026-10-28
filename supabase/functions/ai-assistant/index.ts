@@ -4,10 +4,12 @@
 // La clé API reste ici, côté serveur, jamais visible du navigateur.
 // ============================================================
 
+import { createClient } from "npm:@supabase/supabase-js@2";
+
 Deno.serve(async (req) => {
   // Autoriser les appels depuis le navigateur (CORS)
   const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") || "*",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   };
   if (req.method === "OPTIONS") {
@@ -15,6 +17,18 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Accès réservé aux utilisateurs connectés (la clé publique seule ne suffit plus)
+    const authHeader = req.headers.get("Authorization") || "";
+    const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user } } = await supa.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Connexion requise." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { task, payload } = await req.json();
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) {
