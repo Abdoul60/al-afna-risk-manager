@@ -55,7 +55,7 @@
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + '/entreprises.html' // Redirige vers ton dashboard après connexion
+        redirectTo: 'https://abdoul60.github.io/al-afna-risk-manager/entreprises.html' // Redirige vers ton dashboard après connexion
       }
     });
     if (error) alert('Erreur Google : ' + error.message);
